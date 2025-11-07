@@ -142,7 +142,7 @@ public sealed class Generator : IIncrementalGenerator
                         predicate: (node, _) =>
                             node is TypeDeclarationSyntax structDecl &&
                             structDecl.AttributeLists.Count > 0 &&
-                            (structDecl.Kind() == SyntaxKind.StructDeclaration || structDecl.Kind() == SyntaxKind.RecordStructDeclaration),
+                            (structDecl.IsKind(SyntaxKind.StructDeclaration) || structDecl.IsKind(SyntaxKind.RecordStructDeclaration)),
                         transform: (ctx, _) =>
                         {
                             var model = ctx.SemanticModel;

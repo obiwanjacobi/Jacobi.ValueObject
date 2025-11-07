@@ -89,7 +89,7 @@ internal sealed class CodeBuilder
         Indent()
             .Append(isPublic ? "public" : "private")
             .Append($" {name}({datatype} value) ")
-            .AppendLine(hasIsValidMethod ? "=> _value = value;"
+            .AppendLine(!hasIsValidMethod ? "=> _value = value;"
                 : $$"""{ if ({{name}}.IsValid(value)) _value = value; else throw new Jacobi.ValueObject.ValueObjectException($"Validation Failed. The value '{value}' is not valid for Value Object '{{name}}'."); }""");
         return this;
     }
