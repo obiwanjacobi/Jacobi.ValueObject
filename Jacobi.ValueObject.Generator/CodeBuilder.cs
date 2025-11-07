@@ -55,7 +55,13 @@ internal sealed class CodeBuilder
             if ((_interfaces & CodeBuilderInterfaces.IParsableStruct) != 0)
             {
                 if (addComma) builder.Append(", ");
-                builder.Append($"System.IParsable<{name}>, System.ISpanParsable<{name}>");
+                builder.Append($"System.IParsable<{name}>");
+                addComma = true;
+            }
+            if ((_interfaces & CodeBuilderInterfaces.ISpanParsableStruct) != 0)
+            {
+                if (addComma) builder.Append(", ");
+                builder.Append($"System.ISpanParsable<{name}>");
                 addComma = true;
             }
             builder.AppendLine();
@@ -97,9 +103,11 @@ internal sealed class CodeBuilder
         Indent().AppendLine($"public static implicit operator {datatype}({name} value) => value.Value;");
         return this;
     }
-    public CodeBuilder ExplicitFrom(string name, string datatype)
+    public CodeBuilder ExplicitFrom(string name, string datatype, bool isPartial)
     {
-        Indent().AppendLine($"public static {name} From({datatype} value) => new(value);");
+        Indent().Append("public static ")
+            .Append(isPartial ? "partial " : "")
+            .AppendLine($"{name} From({datatype} value) => new(value);");
         return this;
     }
     public CodeBuilder ToString(string name)
@@ -144,7 +152,10 @@ internal sealed class CodeBuilder
             Indent().AppendLine($"if ({datatype}.TryParse(str, formatProvider, out var dtResult)) {{ result = new (dtResult); return true; }}");
             Indent().AppendLine("result = default; return false;");
             EndScope();
+        }
 
+        if ((_interfaces & CodeBuilderInterfaces.ISpanParsableStruct) != 0)
+        {
             Indent().AppendLine($"public static {name} Parse(System.ReadOnlySpan<char> str, System.IFormatProvider? formatProvider) => new({datatype}.Parse(str, formatProvider));");
             Indent().AppendLine($"public static bool TryParse(System.ReadOnlySpan<char> str, System.IFormatProvider? formatProvider, out {name} result)");
             Scope();
@@ -204,6 +215,7 @@ internal enum CodeBuilderInterfaces
     IComparableStruct = 0x02,
     IComparableValue = 0x04,
     IParsableStruct = 0x08,
+    ISpanParsableStruct = 0x10,
 }
 
 

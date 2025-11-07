@@ -36,7 +36,7 @@ public partial record struct ProductId;
 
 ...
 
-var prodId = ProductId.Parse("<guid>");
+var prodId = ProductId.Parse("<guid>", null); // no format provider
 ```
 
 Implement validation by providing a `static bool IsValid(<datatype> value)` method.
@@ -66,6 +66,18 @@ var prodId = new ProductId(Guid.Empty);   // <- will throw
 | ToString | Overrides the `record struct` dotnet implementation to return the `ValueObject.Value` as string.
 | Comparable | Implements the `IComparable<ValueObject>` interface to compare between ValueObject instances. If ImplicitFrom and/or ImplictAs options are also active, an implementation for `IComparable<datatype>` is also generated. |
 | Parsable | Implements the `IParsable<ValueObject>` and `ISpanParsable<ValueObject>` interfaces to provide `Parse` and `TryParse` methods. Note that this option cannot be used in combination with a `<datatype>` of string (`System.String`).
+
+As an alternative there is also an option to declare the interfaces explicitly and forgo specifying options.
+
+The folowing interfaces are supported:
+
+| Interface | Description |
+| -- | -- |
+| `IEquatable<datatype>` | Implements the `IEquatable<T>` interface for the datatype, as you get with the implicit-options. |
+| `IComparable<ValueObject>` | Implements the `IComparable<T>` interface for the ValueObject, as if the `Comparable` option was specified. |
+| `IComparable<datatype>` | Implements the `IComparable<T>` interface for the datatype, as if the `Comparable` option was specified  together with one of the implicit-options. |
+| `IParsable<ValueObject>` | Implements the `IParsable<T>` interface for the ValueObject (but not `ISpanParsable<T>`), as if the `Parsable` option was specified. |
+| `ISpanParsable<ValueObject>` | Implements the `ISpanParsable<T>` interface for the ValueObject (including `IParsable<T>`), as if the `Parsable` option was specified. |
 
 ## Exceptions
 

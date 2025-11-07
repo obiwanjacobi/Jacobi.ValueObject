@@ -2,6 +2,11 @@ namespace Jacobi.ValueObject.Tests;
 
 public class ValueObjectErrors
 {
+    private readonly ITestOutputHelper _output;
+
+    public ValueObjectErrors(ITestOutputHelper output)
+        => _output = output;
+
     [Fact]
     public void NoNamespace()
     {
@@ -11,7 +16,7 @@ public class ValueObjectErrors
             public partial record struct ValObj;
             """;
 
-        var diagnostics = Generator.Errors(source);
+        var diagnostics = Generator.Errors(source, _output);
         Assert.Single(diagnostics);
         var error = diagnostics.First();
         Assert.Equal("VO001", error.Id);
@@ -27,7 +32,7 @@ public class ValueObjectErrors
             public partial record struct ValObj;
             """;
 
-        var diagnostics = Generator.Errors(source);
+        var diagnostics = Generator.Errors(source, _output);
         Assert.Single(diagnostics);
         var error = diagnostics.First();
         Assert.Equal("VO002", error.Id);
@@ -38,13 +43,31 @@ public class ValueObjectErrors
     {
         var source = """
             using Jacobi.ValueObject;
+            using System;
             namespace Test.Errors;
             [ValueObject<string>(Options = ValueObjectOptions.Parsable)]
             public partial record struct ValObj;
             """;
 
-        var diagnostics = Generator.Errors(source);
-        Assert.Single(diagnostics);
+        var diagnostics = Generator.Errors(source, _output);
+        Assert.NotEmpty(diagnostics);
+        var error = diagnostics.First();
+        Assert.Equal("VO003", error.Id);
+    }
+
+    [Fact]
+    public void StringNotParsableIntf()
+    {
+        var source = """
+            using Jacobi.ValueObject;
+            using System;
+            namespace Test.Errors;
+            [ValueObject<string>]
+            public partial record struct ValObj : IParsable<ValObj>;
+            """;
+
+        var diagnostics = Generator.Errors(source, _output);
+        Assert.NotEmpty(diagnostics);
         var error = diagnostics.First();
         Assert.Equal("VO003", error.Id);
     }

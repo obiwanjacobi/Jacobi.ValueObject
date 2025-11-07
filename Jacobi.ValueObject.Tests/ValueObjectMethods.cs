@@ -2,6 +2,11 @@ namespace Jacobi.ValueObject.Tests;
 
 public class ValueObjectMethods
 {
+    private readonly ITestOutputHelper _output;
+
+    public ValueObjectMethods(ITestOutputHelper output)
+        => _output = output;
+
     [Fact]
     public void DefaultConstructor_Error()
     {
@@ -14,7 +19,22 @@ public class ValueObjectMethods
             // should throw
             """;
 
-        Generator.ExpectException<ValueObjectException>(decl, usage);
+        Generator.ExpectException<ValueObjectException>(decl, usage, _output);
+    }
+
+    [Fact]
+    public void DefaultConstructorDecl_Error()
+    {
+        var source = """
+            using Jacobi.ValueObject;
+            namespace Test.Errors;
+            [ValueObject<int>]
+            public partial record struct ValObj();
+            """;
+
+        var diagnostics = Generator.Errors(source, _output);
+        Assert.NotEmpty(diagnostics);
+        Assert.Single(diagnostics, d => d.Id == "CS0111");
     }
 
     [Fact]
@@ -30,7 +50,7 @@ public class ValueObjectMethods
             // should throw
             """;
 
-        Generator.ExpectException<ValueObjectException>(decl, usage);
+        Generator.ExpectException<ValueObjectException>(decl, usage, _output);
     }
 
     [Fact]
@@ -48,7 +68,7 @@ public class ValueObjectMethods
             // should not throw
             """;
 
-        Generator.AssertAndRun(decl, usage);
+        Generator.AssertAndRun(decl, usage, _output);
     }
 
     [Fact]
@@ -66,6 +86,23 @@ public class ValueObjectMethods
             // should throw
             """;
 
-        Generator.ExpectException<ValueObjectException>(decl, usage);
+        Generator.ExpectException<ValueObjectException>(decl, usage, _output);
+    }
+
+    [Fact]
+    public void Static_From()
+    {
+        var decl = """
+            [ValueObject<int>]
+            public partial record struct ValObj
+            {
+                public static partial ValObj From(int value);
+            }
+            """;
+        var usage = """
+            var vo = ValObj.From(42);
+            """;
+
+        Generator.AssertAndRun(decl, usage, _output);
     }
 }

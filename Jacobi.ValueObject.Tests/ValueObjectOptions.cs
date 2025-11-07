@@ -2,6 +2,11 @@ namespace Jacobi.ValueObject.Tests;
 
 public class ValueObjectOptions
 {
+    private readonly ITestOutputHelper _output;
+
+    public ValueObjectOptions(ITestOutputHelper output)
+        => _output = output;
+
     [Fact]
     public void ImplicitFrom()
     {
@@ -16,6 +21,7 @@ public class ValueObjectOptions
 
         Generator.AssertAndRun(decl, usage);
     }
+
 
     [Fact]
     public void ImplicitAs()
@@ -44,7 +50,7 @@ public class ValueObjectOptions
             var vo = ValObj.From(42);
             """;
 
-        Generator.AssertAndRun(decl, usage);
+        Generator.AssertAndRun(decl, usage, _output);
     }
 
     [Fact]
@@ -60,7 +66,7 @@ public class ValueObjectOptions
             Assert.Equal("42", str);
             """;
 
-        Generator.AssertAndRun(decl, usage);
+        Generator.AssertAndRun(decl, usage, _output);
     }
 
     [Fact]
@@ -98,7 +104,7 @@ public class ValueObjectOptions
             var compDatatype = (IComparable<int>)vo;
             """;
 
-        Generator.AssertAndRun(decl, usage);
+        Generator.AssertAndRun(decl, usage, _output);
     }
 
     [Fact]
@@ -115,6 +121,6 @@ public class ValueObjectOptions
             var parse = (IParsable<ValObj>)vo;
             """;
 
-        Generator.AssertAndRun(decl, usage);
+        Generator.AssertAndRun(decl, usage, _output);
     }
 }

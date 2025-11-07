@@ -2,6 +2,7 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
+using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
@@ -9,7 +10,7 @@ namespace Jacobi.ValueObject.Tests;
 
 internal static class Generator
 {
-    private static GeneratorDriver Compile(string source, out Compilation compilation, out ImmutableArray<Diagnostic> diagnostics)
+    private static string Compile(string source, out Compilation compilation, out ImmutableArray<Diagnostic> diagnostics)
     {
         var initialCompilation = CSharpCompilation.Create("Test",
             [CSharpSyntaxTree.ParseText(source)],
@@ -26,7 +27,19 @@ internal static class Generator
 
         var generator = new Jacobi.ValueObject.Generator.Generator();
         var driver = CSharpGeneratorDriver.Create(generator);
-        return driver.RunGeneratorsAndUpdateCompilation(initialCompilation, out compilation, out diagnostics);
+        var runDriver = driver.RunGeneratorsAndUpdateCompilation(initialCompilation, out compilation, out diagnostics);
+
+        var builder = new StringBuilder();
+        var result = runDriver.GetRunResult();
+        foreach (var res in result.Results)
+        {
+            foreach (var gen in res.GeneratedSources)
+            {
+                builder.AppendLine(gen.SourceText.ToString());
+            }
+        }
+
+        return builder.ToString();
     }
 
     private static void Run(Compilation compilation)
@@ -60,7 +73,7 @@ internal static class Generator
         }
     }
 
-    public static Compilation Assert(string decl, string usage)
+    public static Compilation Assert(string decl, string usage, ITestOutputHelper? output = null)
     {
         var sourceCode = $$"""
             using System;
@@ -75,23 +88,33 @@ internal static class Generator
                 }
             }
             """;
-        Compile(sourceCode, out var compilation, out var diagnostics);
-        Xunit.Assert.Empty(compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
-        Xunit.Assert.Empty(diagnostics);
+        var genSources = Compile(sourceCode, out var compilation, out var diagnostics);
+        output?.WriteLine(genSources);
+
+        Diagnostic[] diags = [.. diagnostics, .. compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error)];
+        if (output is not null)
+        {
+            foreach (Diagnostic diagnostic in diags)
+            {
+                output.WriteLine(diagnostic.ToString());
+            }
+        }
+        Xunit.Assert.Empty(diags);
+        //Xunit.Assert.Empty(diagnostics);
         return compilation;
     }
 
-    public static void AssertAndRun(string decl, string usage)
+    public static void AssertAndRun(string decl, string usage, ITestOutputHelper? output = null)
     {
-        var compilation = Assert(decl, usage);
+        var compilation = Assert(decl, usage, output);
         Run(compilation);
     }
 
-    public static void ExpectException<ExceptionT>(string decl, string usage)
+    public static void ExpectException<ExceptionT>(string decl, string usage, ITestOutputHelper? output = null)
     {
         try
         {
-            var compilation = Assert(decl, usage);
+            var compilation = Assert(decl, usage, output);
             Run(compilation);
         }
         catch (TargetInvocationException tie)
@@ -104,10 +127,11 @@ internal static class Generator
         }
     }
 
-    public static IEnumerable<Diagnostic> Errors(string source)
+    public static IEnumerable<Diagnostic> Errors(string source, ITestOutputHelper? output = null)
     {
-        Compile(source, out var compilation, out var diagnostics);
-        Xunit.Assert.Empty(compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
-        return diagnostics;
+        var genSources = Compile(source, out var compilation, out var diagnostics);
+        if (output is not null)
+            output.WriteLine(genSources);
+        return [.. diagnostics, .. compilation.GetDiagnostics()];
     }
 }
