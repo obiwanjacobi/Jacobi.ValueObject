@@ -45,8 +45,15 @@ public sealed class Generator : IIncrementalGenerator
             if (options == ValueObjectOptions.None)
                 options = ValueObjectOptions.Constructor;
 
+            var isRecordStruct = valObjInfo.Declaration.IsKind(SyntaxKind.RecordStructDeclaration);
+
             // determine what interfaces to implement.
             var interfaces = DetermineInterfaces(valObjInfo.Symbol.Interfaces, name, datatype);
+            if (isRecordStruct) // record already implements this
+                interfaces = interfaces & ~CodeBuilderInterfaces.IEquatableStruct;
+            else  // add it for struct
+                interfaces |= CodeBuilderInterfaces.IEquatableStruct;
+
             var hasImplicit = HasOption(options, ValueObjectOptions.ImplicitAs) | HasOption(options, ValueObjectOptions.ImplicitFrom);
             if (hasImplicit) interfaces |= CodeBuilderInterfaces.IEquatableValue;
             if (HasOption(options, ValueObjectOptions.Comparable))
@@ -66,9 +73,9 @@ public sealed class Generator : IIncrementalGenerator
 
             var builder = new CodeBuilder(interfaces)
                 .Namespace(ns)
-                .PartialRecordStruct(name, datatype)
+                .PartialStruct(name, datatype, isRecordStruct)
                 .DefaultConstructor(name)
-                .Constructor(name, datatype, HasOption(options, ValueObjectOptions.Constructor), isValidMethod)
+                .Constructor(name, datatype, HasOption(options, ValueObjectOptions.Constructor), isValidMethod is not null)
                 .ValueProperty(name, datatype)
                 ;
 
@@ -80,6 +87,8 @@ public sealed class Generator : IIncrementalGenerator
                 builder.ExplicitFrom(name, datatype, isPartial: fromMethod is not null);
             if (HasOption(options, ValueObjectOptions.ToString))
                 builder.ToString(name);
+            if (isValidMethod is not null)
+                builder.TryCreate(name, datatype);
 
             builder.AddInterfaceImplementations(name, datatype);
 
@@ -131,13 +140,13 @@ public sealed class Generator : IIncrementalGenerator
         var valObjInfos = context.SyntaxProvider
                     .CreateSyntaxProvider(
                         predicate: (node, _) =>
-                            node is RecordDeclarationSyntax structDecl &&
+                            node is TypeDeclarationSyntax structDecl &&
                             structDecl.AttributeLists.Count > 0 &&
-                            structDecl.Kind() == SyntaxKind.RecordStructDeclaration,
+                            (structDecl.Kind() == SyntaxKind.StructDeclaration || structDecl.Kind() == SyntaxKind.RecordStructDeclaration),
                         transform: (ctx, _) =>
                         {
                             var model = ctx.SemanticModel;
-                            var structDecl = (RecordDeclarationSyntax)ctx.Node;
+                            var structDecl = (TypeDeclarationSyntax)ctx.Node;
                             var attributes = structDecl.AttributeLists.SelectMany(l => l.Attributes);
                             var valObj = attributes.FirstOrDefault(a =>
                             {
@@ -175,9 +184,8 @@ public sealed class Generator : IIncrementalGenerator
 
             if (intf.MetadataName == "IEquatable`1")
             {
-                // record struct takes care of this
-                //if (intf.TypeArguments[0].Name == name)
-                //    interfaceOptions |= CodeBuilderInterfaces.IComparableStruct;
+                if (intf.TypeArguments[0].Name == name)
+                    interfaceOptions |= CodeBuilderInterfaces.IEquatableStruct;
                 if (intf.TypeArguments[0].ToDisplayString() == datatype)
                     interfaceOptions |= CodeBuilderInterfaces.IEquatableValue;
             }
@@ -203,5 +211,5 @@ public sealed class Generator : IIncrementalGenerator
     private static bool HasInterface(CodeBuilderInterfaces interfaces, CodeBuilderInterfaces intf)
         => (interfaces & intf) == intf;
 
-    private record class ValueObjectInfo(RecordDeclarationSyntax Declaration, INamedTypeSymbol Symbol);
+    private record class ValueObjectInfo(TypeDeclarationSyntax Declaration, INamedTypeSymbol Symbol);
 }

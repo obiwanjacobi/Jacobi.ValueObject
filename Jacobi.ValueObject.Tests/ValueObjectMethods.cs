@@ -72,6 +72,43 @@ public class ValueObjectMethods
     }
 
     [Fact]
+    public void Static_IsValid_Try()
+    {
+        var decl = """
+            [ValueObject<int>]
+            public partial record struct ValObj
+            {
+                public static bool IsValid(int value) => value == 42;
+            }
+            """;
+        var usage = """
+            var valid = ValObj.Try(42, out var vo);
+            Assert.True(valid);
+            Assert.Equal(42, vo.Value);
+            """;
+
+        Generator.AssertAndRun(decl, usage, _output);
+    }
+
+    [Fact]
+    public void Static_IsValid_Try_Invalid()
+    {
+        var decl = """
+            [ValueObject<int>]
+            public partial record struct ValObj
+            {
+                public static bool IsValid(int value) => value == 42;
+            }
+            """;
+        var usage = """
+            var valid = ValObj.Try(101, out var vo);
+            Assert.False(valid);
+            """;
+
+        Generator.AssertAndRun(decl, usage, _output);
+    }
+
+    [Fact]
     public void Static_IsValid_Error()
     {
         var decl = """

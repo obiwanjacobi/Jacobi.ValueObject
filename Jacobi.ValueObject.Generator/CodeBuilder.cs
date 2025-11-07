@@ -1,6 +1,5 @@
 ﻿using System.Reflection;
 using System.Text;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Jacobi.ValueObject.Generator;
 
@@ -25,25 +24,34 @@ internal sealed class CodeBuilder
         return this;
     }
 
-    public CodeBuilder PartialRecordStruct(string name, string datatype)
+    public CodeBuilder PartialStruct(string name, string datatype, bool isRecord)
     {
         var assemblyName = Assembly.GetExecutingAssembly().GetName();
         Indent().AppendLine($"""[System.CodeDom.Compiler.GeneratedCode("{assemblyName.Name}", "{assemblyName.Version}")]""");
         Indent().AppendLine($$"""[System.Diagnostics.DebuggerDisplay("Value = {Value}")]""");
-        Indent().AppendLine($"readonly partial record struct {name}");
+        Indent().Append("readonly partial ")
+            .Append(isRecord ? "record " : "")
+            .Append($"struct {name}");
         if (_interfaces != CodeBuilderInterfaces.None)
         {
             var addComma = false;
             var builder = Indent(1).Append(" : ");
-            if ((_interfaces & CodeBuilderInterfaces.IComparableStruct) != 0)
+            if ((_interfaces & CodeBuilderInterfaces.IEquatableStruct) != 0)
             {
-                builder.Append($"System.IComparable<{name}>");
+                if (addComma) builder.Append(", ");
+                builder.Append($"System.IEquatable<{name}> ");
                 addComma = true;
             }
             if ((_interfaces & CodeBuilderInterfaces.IEquatableValue) != 0)
             {
                 if (addComma) builder.Append(", ");
                 builder.Append($"System.IEquatable<{datatype}> ");
+                addComma = true;
+            }
+            if ((_interfaces & CodeBuilderInterfaces.IComparableStruct) != 0)
+            {
+                if (addComma) builder.Append(", ");
+                builder.Append($"System.IComparable<{name}>");
                 addComma = true;
             }
             if ((_interfaces & CodeBuilderInterfaces.IComparableValue) != 0)
@@ -76,12 +84,12 @@ internal sealed class CodeBuilder
         return this;
     }
 
-    public CodeBuilder Constructor(string name, string datatype, bool isPublic, MethodDeclarationSyntax? isValidMethod)
+    public CodeBuilder Constructor(string name, string datatype, bool isPublic, bool hasIsValidMethod)
     {
         Indent()
             .Append(isPublic ? "public" : "private")
             .Append($" {name}({datatype} value) ")
-            .AppendLine(isValidMethod is null ? "=> _value = value;"
+            .AppendLine(hasIsValidMethod ? "=> _value = value;"
                 : $$"""{ if ({{name}}.IsValid(value)) _value = value; else throw new Jacobi.ValueObject.ValueObjectException($"Validation Failed. The value '{value}' is not valid for Value Object '{{name}}'."); }""");
         return this;
     }
@@ -110,6 +118,13 @@ internal sealed class CodeBuilder
             .AppendLine($"{name} From({datatype} value) => new(value);");
         return this;
     }
+
+    public CodeBuilder TryCreate(string name, string datatype)
+    {
+        Indent().AppendLine($$"""public static bool Try({{datatype}} value, out {{name}} valueObject) { if ({{name}}.IsValid(value)) { valueObject = new(value); return true; } valueObject = default; return false; }""");
+        return this;
+    }
+
     public CodeBuilder ToString(string name)
     {
         Indent().AppendLine($"public override string ToString() => Value.ToString();");
@@ -118,6 +133,19 @@ internal sealed class CodeBuilder
 
     public CodeBuilder AddInterfaceImplementations(string name, string datatype)
     {
+        if ((_interfaces & CodeBuilderInterfaces.IEquatableStruct) != 0)
+        {
+            Indent().AppendLine($"public bool Equals({name} value) => Value.Equals(value.Value);");
+            Indent().AppendLine($"public static bool operator ==({name} valueObject, {name} value) => valueObject.Equals(value);");
+            Indent().AppendLine($"public static bool operator !=({name} valueObject, {name} value) => !valueObject.Equals(value);");
+        }
+
+        if ((_interfaces & CodeBuilderInterfaces.IEquatableValue) != 0)
+        {
+            Indent().AppendLine($"public bool Equals({datatype} value) => Value.Equals(value);");
+            Indent().AppendLine($"public static bool operator ==({name} valueObject, {datatype} value) => valueObject.Equals(value);");
+            Indent().AppendLine($"public static bool operator !=({name} valueObject, {datatype} value) => !valueObject.Equals(value);");
+        }
 
         if ((_interfaces & CodeBuilderInterfaces.IComparableStruct) != 0)
         {
@@ -126,13 +154,6 @@ internal sealed class CodeBuilder
             Indent().AppendLine($"public static bool operator <({name} value1, {name} value2) => value1.CompareTo(value2) < 0;");
             Indent().AppendLine($"public static bool operator >=({name} value1, {name} value2) => value1.CompareTo(value2) >= 0;");
             Indent().AppendLine($"public static bool operator <=({name} value1, {name} value2) => value1.CompareTo(value2) <= 0;");
-        }
-
-        if ((_interfaces & CodeBuilderInterfaces.IEquatableValue) != 0)
-        {
-            Indent().AppendLine($"public bool Equals({datatype} value) => Value.Equals(value);");
-            Indent().AppendLine($"public static bool operator ==({name} valueObject, {datatype} value) => valueObject.Equals(value);");
-            Indent().AppendLine($"public static bool operator !=({name} valueObject, {datatype} value) => !valueObject.Equals(value);");
         }
 
         if ((_interfaces & CodeBuilderInterfaces.IComparableValue) != 0)
@@ -211,11 +232,12 @@ internal sealed class CodeBuilder
 internal enum CodeBuilderInterfaces
 {
     None = 0x00,
-    IEquatableValue = 0x01,
-    IComparableStruct = 0x02,
-    IComparableValue = 0x04,
-    IParsableStruct = 0x08,
-    ISpanParsableStruct = 0x10,
+    IEquatableStruct = 0x01,
+    IEquatableValue = 0x02,
+    IComparableStruct = 0x04,
+    IComparableValue = 0x08,
+    IParsableStruct = 0x10,
+    ISpanParsableStruct = 0x20,
 }
 
 

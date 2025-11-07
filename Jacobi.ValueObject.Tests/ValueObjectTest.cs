@@ -2,6 +2,11 @@ namespace Jacobi.ValueObject.Tests;
 
 public class ValueObjectTest
 {
+    private readonly ITestOutputHelper _output;
+
+    public ValueObjectTest(ITestOutputHelper output)
+        => _output = output;
+
     [Fact]
     public void RecordIEquatable()
     {
@@ -14,7 +19,22 @@ public class ValueObjectTest
             var intf = (IEquatable<ValObj>)vo;
             """;
 
-        Generator.AssertAndRun(decl, usage);
+        Generator.AssertAndRun(decl, usage, _output);
+    }
+
+    [Fact]
+    public void StructIEquatable()
+    {
+        var decl = """
+            [ValueObject<int>]
+            public partial struct ValObj;
+            """;
+        var usage = """
+            var vo = new ValObj(100);
+            var intf = (IEquatable<ValObj>)vo;
+            """;
+
+        Generator.AssertAndRun(decl, usage, _output);
     }
 
     [Fact]
@@ -30,11 +50,27 @@ public class ValueObjectTest
             Assert.Equal("ValObj { Value = 100 }", str);
             """;
 
-        Generator.AssertAndRun(decl, usage);
+        Generator.AssertAndRun(decl, usage, _output);
     }
 
     [Fact]
-    public void Minimal_Int32()
+    public void StructToString()
+    {
+        var decl = """
+            [ValueObject<int>]
+            public partial struct ValObj;
+            """;
+        var usage = """
+            var vo = new ValObj(100);
+            var str = vo.ToString();
+            Assert.Equal("Test.ValObj", str);
+            """;
+
+        Generator.AssertAndRun(decl, usage, _output);
+    }
+
+    [Fact]
+    public void Minimal_Int32_rec()
     {
         var decl = """
             [ValueObject<int>]
@@ -44,11 +80,25 @@ public class ValueObjectTest
             var vo = new ValObj(100);
             """;
 
-        Generator.AssertAndRun(decl, usage);
+        Generator.AssertAndRun(decl, usage, _output);
     }
 
     [Fact]
-    public void Minimal_String()
+    public void Minimal_Int32()
+    {
+        var decl = """
+            [ValueObject<int>]
+            public partial struct ValObj;
+            """;
+        var usage = """
+            var vo = new ValObj(100);
+            """;
+
+        Generator.AssertAndRun(decl, usage, _output);
+    }
+
+    [Fact]
+    public void Minimal_String_rec()
     {
         var decl = """
             [ValueObject<string>]
@@ -58,11 +108,25 @@ public class ValueObjectTest
             var vo = new ValObj("Hello World");
             """;
 
-        Generator.AssertAndRun(decl, usage);
+        Generator.AssertAndRun(decl, usage, _output);
     }
 
     [Fact]
-    public void Minimal_DateTime()
+    public void Minimal_String()
+    {
+        var decl = """
+            [ValueObject<string>]
+            public partial struct ValObj;
+            """;
+        var usage = """
+            var vo = new ValObj("Hello World");
+            """;
+
+        Generator.AssertAndRun(decl, usage, _output);
+    }
+
+    [Fact]
+    public void Minimal_DateTime_rec()
     {
         var decl = """
             [ValueObject<DateTime>]
@@ -72,6 +136,20 @@ public class ValueObjectTest
             var vo = new ValObj(DateTime.Now);
             """;
 
-        Generator.AssertAndRun(decl, usage);
+        Generator.AssertAndRun(decl, usage, _output);
+    }
+
+    [Fact]
+    public void Minimal_DateTime()
+    {
+        var decl = """
+            [ValueObject<DateTime>]
+            public partial struct ValObj;
+            """;
+        var usage = """
+            var vo = new ValObj(DateTime.Now);
+            """;
+
+        Generator.AssertAndRun(decl, usage, _output);
     }
 }
