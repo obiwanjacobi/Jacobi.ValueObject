@@ -6,6 +6,8 @@ The goal of this project is to provide a library that is simple to use and good 
 
 ## Value Object
 
+Add the `Jacobi.ValueObject` (NuGet) package to your project to get started.
+
 Read more on how to use the Value Object generator in this [readme](./Jacobi.ValueObject/readme.md).
 
 ## Solution

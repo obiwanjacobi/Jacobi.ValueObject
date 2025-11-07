@@ -2,6 +2,7 @@
 
 ## Usage
 
+> Add a (package) reference to `Jacobi.ValueObject`.
 
 ```csharp
 using Jacobi.ValueObject;
@@ -16,6 +17,8 @@ public partial record struct ProductId;
 [ValueObject(typeof(Guid))]
 public partial record struct ProductId;
 ```
+
+> We call the `Guid` the 'datatype' and the `ProductId` the 'ValueObject'.
 
 Minimal effort:
 
@@ -79,6 +82,29 @@ The folowing interfaces are supported:
 | `IParsable<ValueObject>` | Implements the `IParsable<T>` interface for the ValueObject (but not `ISpanParsable<T>`), as if the `Parsable` option was specified. |
 | `ISpanParsable<ValueObject>` | Implements the `ISpanParsable<T>` interface for the ValueObject (including `IParsable<T>`), as if the `Parsable` option was specified. |
 
+## Methods
+
+Implement a `static bool IsValid(<datatype> value)` method in your ValueObject and it will be detected and used when constructing new instances.
+
+```csharp
+[ValueObject<Guid>]
+public partial record struct ProductId
+{
+    // public, internal or private - you decide
+    public static bool IsValid(Guid id) => id != Guid.Empty;
+}
+```
+
+Declare a `public static partial bool From(<datatype> value);` partial method (no implementation) in your ValueObject and it will be detected and implemented similar to specifying the `ExplicitFrom` option.
+
+```csharp
+[ValueObject<Guid>]
+public partial record struct ProductId
+{
+    public static partial ProductId From(Guid id);
+}
+```
+
 ## Exceptions
 
 The `Jacobi.ValueObject.ValueObjectException` is throw in these circumstances.
@@ -90,9 +116,13 @@ The `Jacobi.ValueObject.ValueObjectException` is throw in these circumstances.
 
 ## Project File
 
-To see the generated source files for the value objects in your `.csproj` project file:
+To see the generated source files for the value objects, add to your `.csproj` project file:
 
-`<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>`
+```xml
+<PropertyGroup>
+  <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+</PropertyGroup>
+```
 
 ## Compiler Errors
 
@@ -106,6 +136,7 @@ To see the generated source files for the value objects in your `.csproj` projec
 Compiler errors caused by you not following the rules :-)
 
 - Do not specify a default constructor. So do NOT do this: `public partial record struct ProductId()`
+- Do not use the `ToString` option and also implement a `string ToString()` override in your ValueObject.
 
 ## Unsupported
 
