@@ -35,7 +35,7 @@ internal sealed class CodeBuilder
         if (_interfaces != CodeBuilderInterfaces.None)
         {
             var addComma = false;
-            var builder = Indent(1).Append(" : ");
+            var builder = Indent().Append(" : ");
             if ((_interfaces & CodeBuilderInterfaces.IEquatableStruct) != 0)
             {
                 if (addComma) builder.Append(", ");

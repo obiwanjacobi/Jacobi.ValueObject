@@ -44,7 +44,6 @@ public class ValueObjectInterfaces
         Generator.AssertAndRun(decl, usage, _output);
     }
 
-
     [Fact]
     public void EquatableValue()
     {

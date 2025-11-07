@@ -19,7 +19,7 @@ public class ValueObjectOptions
             var intf = (IEquatable<int>)vo;
             """;
 
-        Generator.AssertAndRun(decl, usage);
+        Generator.AssertAndRun(decl, usage, _output);
     }
 
 
@@ -36,7 +36,7 @@ public class ValueObjectOptions
             var intf = (IEquatable<int>)vo;
             """;
 
-        Generator.AssertAndRun(decl, usage);
+        Generator.AssertAndRun(decl, usage, _output);
     }
 
     [Fact]
@@ -85,7 +85,7 @@ public class ValueObjectOptions
             var comp = (IComparable<ValObj>)vo1;
             """;
 
-        Generator.AssertAndRun(decl, usage);
+        Generator.AssertAndRun(decl, usage, _output);
     }
 
     [Fact]
