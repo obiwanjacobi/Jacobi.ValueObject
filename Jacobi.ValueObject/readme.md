@@ -2,10 +2,6 @@
 
 ## Usage
 
-Important:
-
-- Do not specify a default constructor. So do NOT do this: `public partial record struct ProductId()`
-
 
 ```csharp
 using Jacobi.ValueObject;
@@ -93,6 +89,11 @@ To see the generated source files for the value objects in your `.csproj` projec
 | VO001 | You have declare a ValueObject in the global namespace. It is mandatory to declare your ValueObjects inside a namespace. |
 | VO002 | You did `[ValueObject(null)]` - It cannot work without a datatype. |
 | VO003 | You used the Parsable option on a ValueObject with the `string`/`Systsem.String` datatype. |
+
+
+Compiler errors caused by you not following the rules :-)
+
+- Do not specify a default constructor. So do NOT do this: `public partial record struct ProductId()`
 
 ## Unsupported
 

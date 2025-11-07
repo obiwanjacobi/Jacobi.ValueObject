@@ -5,6 +5,29 @@
     <LangVersion>12</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <Title>Jacobi.ValueObject</Title>
+    <Company>Jacobi Software</Company>
+    <Authors>Marc Jacobi</Authors>
+    <Description>Generate Value Object implementations for record struct declarations using a code attribute.</Description>
+    <Copyright>Copyright (c) 2025 Jacobi Software</Copyright>
+    <PackageProjectUrl>https://github.com/obiwanjacobi/Jacobi.ValueObject</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/obiwanjacobi/Jacobi.ValueObject</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>readme.md</PackageReadmeFile>
+    <PackageTags>value-object</PackageTags>
+    <PackageLicenseExpression>LGPL-2.1-only</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
   </PropertyGroup>
 
+  <ItemGroup>
+    <None Update="readme.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="..\Jacobi.ValueObject.Generator\bin\$(Configuration)\netstandard2.0\Jacobi.ValueObject.Generator.dll">
+      <Pack>True</Pack>
+      <PackagePath>analyzers/dotnet/cs/</PackagePath>
+    </None>
+  </ItemGroup>
 </Project>

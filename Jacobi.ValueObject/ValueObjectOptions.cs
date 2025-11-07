@@ -1,11 +1,12 @@
 ﻿namespace Jacobi.ValueObject;
 
 /// <summary>
-/// Fine-tuning what to generate.
+/// Fine-tuning what to generate for a value object.
 /// </summary>
 [Flags]
 public enum ValueObjectOptions
 {
+    /// <summary>Invalid</summary>
     None = 0,
     /// <summary>Implicit assignment to initialize a new value object.</summary>
     ImplicitFrom = 0x01,
