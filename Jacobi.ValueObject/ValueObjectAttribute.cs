@@ -66,6 +66,15 @@ public sealed class ValueObjectAttribute<T> : Attribute
     }
 
     /// <summary>
+    /// Constructs a new attribute with options.
+    /// </summary>
+    public ValueObjectAttribute(ValueObjectOptions options)
+    {
+        DataType = typeof(T);
+        Options = options;
+    }
+
+    /// <summary>
     /// Gets the datatype of the value object.
     /// </summary>
     public Type DataType { get; }

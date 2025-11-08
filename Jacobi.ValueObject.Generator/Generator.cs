@@ -21,9 +21,7 @@ public sealed class Generator : IIncrementalGenerator
                 return;
             }
 
-            var valueObjectAttr = GetNameAndType(
-                valObjInfo.Symbol, out var ns, out var name, out var datatype);
-
+            GetNameTypeAndOptions(valObjInfo.Symbol, out var ns, out var name, out var datatype, out var options);
             if (datatype is null)
             {
                 spc.DataTypeIsNull(valObjInfo.Symbol.Name, valObjInfo.Declaration.GetLocation());
@@ -32,14 +30,6 @@ public sealed class Generator : IIncrementalGenerator
 
             var isValidMethod = FindMethod(valObjInfo.Declaration, "IsValid", "bool", datatype, isStatic: true, isPartial: false);
             var fromMethod = FindMethod(valObjInfo.Declaration, "From", name, datatype, isStatic: true, isPartial: true);
-
-            ValueObjectOptions options = ValueObjectOptions.None;
-            if (valueObjectAttr.NamedArguments.Length > 0)
-            {
-                var optionsArg = valueObjectAttr.NamedArguments[0];
-                if (optionsArg.Value.Value is not null)
-                    options = (ValueObjectOptions)optionsArg.Value.Value;
-            }
 
             // default options - at least a constructor
             if (options == ValueObjectOptions.None)
@@ -115,7 +105,7 @@ public sealed class Generator : IIncrementalGenerator
         return null;
     }
 
-    private static AttributeData GetNameAndType(INamedTypeSymbol symbol, out string ns, out string name, out string? datatype)
+    private static void GetNameTypeAndOptions(INamedTypeSymbol symbol, out string ns, out string name, out string? datatype, out ValueObjectOptions options)
     {
         ns = symbol.ContainingNamespace.ToDisplayString();
         name = symbol.Name;
@@ -126,47 +116,65 @@ public sealed class Generator : IIncrementalGenerator
         if (valueObjectAttr is null || valueObjectAttr.AttributeClass?.Kind == SymbolKind.ErrorType)
             throw new InvalidOperationException("Internal Error: The ValueObjectAttribute is in Error!");
 
+        bool isGeneric = false;
         datatype = null;
         if (valueObjectAttr.AttributeClass?.TypeArguments.Length > 0)
+        {
             // [ValueObject<T>]
             datatype = valueObjectAttr.AttributeClass?.TypeArguments[0].ToDisplayString();
+            isGeneric = true;
+        }
         else if (valueObjectAttr.ConstructorArguments.Length > 0)
+        {
             // [ValueObject(typeof(T))]
             datatype = ((INamedTypeSymbol?)valueObjectAttr.ConstructorArguments[0].Value)?.ToDisplayString();
+        }
 
-        return valueObjectAttr;
+        options = ValueObjectOptions.None;
+        if (valueObjectAttr.NamedArguments.Length > 0)
+        {
+            var optionsArg = valueObjectAttr.NamedArguments[0];
+            if (optionsArg.Value.Value is not null)
+                options = (ValueObjectOptions)optionsArg.Value.Value;
+        }
+        else if (isGeneric && valueObjectAttr.ConstructorArguments.Length > 0)
+        {
+            var optionsArg = valueObjectAttr.ConstructorArguments[0];
+            if (optionsArg.Value is not null)
+                options = (ValueObjectOptions)optionsArg.Value;
+        }
     }
 
     private static IncrementalValuesProvider<ValueObjectInfo?> FindDeclarationsAndSymbols(IncrementalGeneratorInitializationContext context)
     {
         var valObjInfos = context.SyntaxProvider
-                    .CreateSyntaxProvider(
-                        predicate: (node, _) =>
-                            node is TypeDeclarationSyntax structDecl &&
-                            structDecl.AttributeLists.Count > 0 &&
-                            (structDecl.IsKind(SyntaxKind.StructDeclaration) || structDecl.IsKind(SyntaxKind.RecordStructDeclaration)),
-                        transform: (ctx, _) =>
+            .CreateSyntaxProvider(
+                predicate: (node, _) =>
+                    node is TypeDeclarationSyntax structDecl &&
+                    structDecl.AttributeLists.Count > 0 &&
+                    (structDecl.IsKind(SyntaxKind.StructDeclaration) || structDecl.IsKind(SyntaxKind.RecordStructDeclaration)),
+                transform: (ctx, _) =>
+                {
+                    var model = ctx.SemanticModel;
+                    var structDecl = (TypeDeclarationSyntax)ctx.Node;
+                    var attributes = structDecl.AttributeLists.SelectMany(l => l.Attributes);
+                    var valObj = attributes.FirstOrDefault(a =>
+                    {
+                        var name = a.Name.ToString();
+                        return name == "ValueObject" || name.StartsWith("ValueObject<");
+                    });
+                    // is it our attribute?
+                    if (valObj != null)
+                    {
+                        var symbol = model.GetDeclaredSymbol(structDecl);
+                        if (symbol is not null)
                         {
-                            var model = ctx.SemanticModel;
-                            var structDecl = (TypeDeclarationSyntax)ctx.Node;
-                            var attributes = structDecl.AttributeLists.SelectMany(l => l.Attributes);
-                            var valObj = attributes.FirstOrDefault(a =>
-                            {
-                                var name = a.Name.ToString();
-                                return name == "ValueObject" || name.StartsWith("ValueObject<");
-                            });
-                            // is it our attribute?
-                            if (valObj != null)
-                            {
-                                var symbol = model.GetDeclaredSymbol(structDecl);
-                                if (symbol is not null)
-                                {
-                                    return new ValueObjectInfo(structDecl, symbol);
-                                }
-                            }
-                            return null;
-                        })
-                    .Where(valObjInfo => valObjInfo is not null);
+                            return new ValueObjectInfo(structDecl, symbol);
+                        }
+                    }
+                    return null;
+                })
+            .Where(valObjInfo => valObjInfo is not null);
         return valObjInfos;
     }
 

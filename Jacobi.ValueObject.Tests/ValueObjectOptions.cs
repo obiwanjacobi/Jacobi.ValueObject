@@ -27,7 +27,7 @@ public class ValueObjectOptions
     public void ImplicitAs()
     {
         var decl = """
-            [ValueObject<int>(Options = ValueObjectOptions.ImplicitAs | ValueObjectOptions.Constructor)]
+            [ValueObject<int>(ValueObjectOptions.ImplicitAs | ValueObjectOptions.Constructor)]
             public partial record struct ValObj;
             """;
         var usage = """
@@ -43,7 +43,7 @@ public class ValueObjectOptions
     public void ExplicitFrom()
     {
         var decl = """
-            [ValueObject<int>(Options = ValueObjectOptions.ExplicitFrom)]
+            [ValueObject<int>(ValueObjectOptions.ExplicitFrom)]
             public partial record struct ValObj;
             """;
         var usage = """
@@ -57,7 +57,7 @@ public class ValueObjectOptions
     public void ToStringOption()
     {
         var decl = """
-            [ValueObject<int>(Options = ValueObjectOptions.ToString | ValueObjectOptions.Constructor)]
+            [ValueObject<int>(ValueObjectOptions.ToString | ValueObjectOptions.Constructor)]
             public partial record struct ValObj;
             """;
         var usage = """

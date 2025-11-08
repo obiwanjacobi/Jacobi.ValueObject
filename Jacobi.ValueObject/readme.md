@@ -72,7 +72,7 @@ var prod = new Product(Guid.NewGuid(), "Product");
 Using Options to manage what code (support) is generated.
 
 ```csharp
-[ValueObject<Guid>(Options = ValueObjectOptions.Parsable)]
+[ValueObject<Guid>(ValueObjectOptions.Parsable)]
 public partial record struct ProductId;
 ...
 var prodId = ProductId.Parse("<guid>", null); // no format provider
@@ -94,7 +94,7 @@ public partial struct Product
 This also works:
 
 ```csharp
-[ValueObject<Guid>(Options = ValueObjectOptions.ImplicitFrom)]
+[ValueObject<Guid>(ValueObjectOptions.ImplicitFrom)]
 public partial struct ProductId;
 
 [MultiValueObject]
@@ -135,6 +135,24 @@ var prod = new Product(Guid.Empty, "");   // <- will throw
 ```
 
 ## Options
+
+Specify options in the `ValueObjectAttribute` or `MultiValueObjectAttribute`. Here are the variants:
+
+```csharp
+[ValueObject<Guid>(ValueObjectOptions.Parsable)]
+public partial record struct ProductId;
+
+[ValueObject<Guid>(Options = ValueObjectOptions.Parsable)]
+public partial record struct ProductId;
+
+[ValueObject(typeof(Guid), Options = ValueObjectOptions.Parsable)]
+public partial record struct ProductId;
+```
+```csharp
+[MultiValueObject(MultiValueObjectOptions.Deconstruct]
+public partial record struct Product
+{ ... }
+```
 
 The 'Single' column indicates support for the `ValueObjectAttribute` options (Yes/No).
 The 'Multi' column indicates support for the `MultiValueObjectAttribute` options (Yes/No).

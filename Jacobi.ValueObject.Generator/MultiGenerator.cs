@@ -101,29 +101,29 @@ public sealed class MultiGenerator : IIncrementalGenerator
     private static IncrementalValuesProvider<ValueObjectInfo?> FindDeclarationsAndSymbols(IncrementalGeneratorInitializationContext context)
     {
         var valObjInfos = context.SyntaxProvider
-                    .CreateSyntaxProvider(
-                        predicate: (node, _) =>
-                            node is TypeDeclarationSyntax structDecl &&
-                            structDecl.AttributeLists.Count > 0 &&
-                            (structDecl.IsKind(SyntaxKind.StructDeclaration) || structDecl.IsKind(SyntaxKind.RecordStructDeclaration)),
-                        transform: (ctx, _) =>
+            .CreateSyntaxProvider(
+                predicate: (node, _) =>
+                    node is TypeDeclarationSyntax structDecl &&
+                    structDecl.AttributeLists.Count > 0 &&
+                    (structDecl.IsKind(SyntaxKind.StructDeclaration) || structDecl.IsKind(SyntaxKind.RecordStructDeclaration)),
+                transform: (ctx, _) =>
+                {
+                    var model = ctx.SemanticModel;
+                    var structDecl = (TypeDeclarationSyntax)ctx.Node;
+                    var attributes = structDecl.AttributeLists.SelectMany(l => l.Attributes);
+                    var valObj = attributes.FirstOrDefault(a => a.Name.ToString() == "MultiValueObject");
+                    // is it our attribute?
+                    if (valObj != null)
+                    {
+                        var symbol = model.GetDeclaredSymbol(structDecl);
+                        if (symbol is not null)
                         {
-                            var model = ctx.SemanticModel;
-                            var structDecl = (TypeDeclarationSyntax)ctx.Node;
-                            var attributes = structDecl.AttributeLists.SelectMany(l => l.Attributes);
-                            var valObj = attributes.FirstOrDefault(a => a.Name.ToString() == "MultiValueObject");
-                            // is it our attribute?
-                            if (valObj != null)
-                            {
-                                var symbol = model.GetDeclaredSymbol(structDecl);
-                                if (symbol is not null)
-                                {
-                                    return new ValueObjectInfo(structDecl, symbol);
-                                }
-                            }
-                            return null;
-                        })
-                    .Where(valObjInfo => valObjInfo is not null);
+                            return new ValueObjectInfo(structDecl, symbol);
+                        }
+                    }
+                    return null;
+                })
+            .Where(valObjInfo => valObjInfo is not null);
         return valObjInfos;
     }
 
