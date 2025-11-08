@@ -233,6 +233,8 @@ To see the generated source files for the value objects, add to your `.csproj` p
 </PropertyGroup>
 ```
 
+You'll find the generated `Xxxx_ValueObject.g.cs` source code files in the `<Project>\obj\Debug\net8.0\generated\Jacobi.ValueObject.Generator\Jacobi.ValueObject.Generator.(Multi)Generator\` folders (assuming a Debug build of net8.0).
+
 ## Compiler Errors
 
 | Code | Multi | Error |
