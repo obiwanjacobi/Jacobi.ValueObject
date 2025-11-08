@@ -25,8 +25,17 @@ public sealed class MultiValueObjectAttribute : Attribute
         Options = MultiValueObjectOptions.Constructor;
     }
 
-    // <summary>
+    /// <summary>
+    /// Constructs a new attribute.
+    /// </summary>
+    /// <param name="options">The options to set.</param>
+    public MultiValueObjectAttribute(MultiValueObjectOptions options)
+    {
+        Options = options;
+    }
+
+    /// <summary>
     /// Gets or sets the configuration options for the value object.
     /// </summary>
-    public MultiValueObjectOptions Options { get; set; }
+    public MultiValueObjectOptions Options { get; }
 }

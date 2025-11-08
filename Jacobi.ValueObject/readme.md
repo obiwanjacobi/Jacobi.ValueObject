@@ -36,7 +36,8 @@ public partial record struct ProductId;
 
 [ValueObject(typeof(Guid))]
 public partial struct ProductId;
-
+```
+```csharp
 // multi value
 [MultiValueObject]
 public partial struct Product
@@ -78,6 +79,34 @@ var prodId = ProductId.Parse("<guid>", null); // no format provider
 ```
 
 > Note that the `MultiValueObject` only supports a few options.
+
+```csharp
+[MultiValueObject(MultiValueObjectOptions.Deconstruct | MultiValueObjectOptions.Constructor)]
+public partial struct Product
+{
+    public partial Guid Id { get; }
+    public partial string Name { get; }
+}
+...
+(var id, var name) = new Product(Guid.NewGuid(), "Product");
+```
+
+This also works:
+
+```csharp
+[ValueObject<Guid>(Options = ValueObjectOptions.ImplicitFrom)]
+public partial struct ProductId;
+
+[MultiValueObject]
+public partial record struct Product
+{
+    public partial ProductId Id {get;}
+    public partial string Name {get;}
+}
+...
+// can construct a ProductId from a Guid because of ImplicitFrom option.
+var vo = new Product(Guid.NewGuid(), "name");
+```
 
 Implement validation by providing a `static bool IsValid(<datatype> value)` method.
 You determine the accessibility (`public`, `internal`, `private`).
@@ -159,7 +188,7 @@ public partial struct Product
 }
 ```
 
-Note that if a `static bool IsValid()` method is provided an extra (static) method `Try` is generated that uses the `IsValid` to optionally create a new instance of the ValueObject.
+Note that if a `static bool IsValid()` method is detected an extra (static) method `Try` is generated that uses the `IsValid` to optionally create a new instance of the ValueObject.
 
 ```csharp
 [ValueObject<Guid>]

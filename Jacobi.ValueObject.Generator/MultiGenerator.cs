@@ -29,11 +29,11 @@ public sealed class MultiGenerator : IIncrementalGenerator
                 throw new InvalidOperationException("Internal Error: The ValueObjectAttribute is in Error!");
 
             MultiValueObjectOptions options = MultiValueObjectOptions.None;
-            if (valueObjectAttr.NamedArguments.Length > 0)
+            if (valueObjectAttr.ConstructorArguments.Length > 0)
             {
-                var optionsArg = valueObjectAttr.NamedArguments[0];
-                if (optionsArg.Value.Value is not null)
-                    options = (MultiValueObjectOptions)optionsArg.Value.Value;
+                var optionsArg = valueObjectAttr.ConstructorArguments[0];
+                if (optionsArg.Value is not null)
+                    options = (MultiValueObjectOptions)optionsArg.Value;
             }
 
             var properties = FindProperties(valObjInfo.Declaration).ToDictionary(p => p.Identifier.Text, p => p.Type.ToString());

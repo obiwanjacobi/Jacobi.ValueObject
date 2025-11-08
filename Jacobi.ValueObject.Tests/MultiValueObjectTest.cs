@@ -70,7 +70,7 @@ public class MultiValueObjectTest
     public void ExplicitFrom()
     {
         var decl = """
-            [MultiValueObject(Options = MultiValueObjectOptions.ExplicitFrom)]
+            [MultiValueObject(MultiValueObjectOptions.ExplicitFrom)]
             public partial struct MultiValObj
             {
                 public partial int Id {get;}
@@ -110,7 +110,7 @@ public class MultiValueObjectTest
     public void Deconstruct()
     {
         var decl = """
-            [MultiValueObject(Options = MultiValueObjectOptions.Deconstruct | MultiValueObjectOptions.Constructor)]
+            [MultiValueObject(MultiValueObjectOptions.Deconstruct | MultiValueObjectOptions.Constructor)]
             public partial struct MultiValObj
             {
                 public partial int Id {get;}
@@ -131,7 +131,7 @@ public class MultiValueObjectTest
     public void Deconstruct_rec()
     {
         var decl = """
-            [MultiValueObject(Options = MultiValueObjectOptions.Deconstruct | MultiValueObjectOptions.Constructor)]
+            [MultiValueObject(MultiValueObjectOptions.Deconstruct | MultiValueObjectOptions.Constructor)]
             public partial record struct MultiValObj
             {
                 public partial int Id {get;}
@@ -143,6 +143,27 @@ public class MultiValueObjectTest
             (var id, var name) = vo;
             Assert.Equal(100, id);
             Assert.Equal("name", name);
+            """;
+
+        Generator.AssertAndRun(decl, usage, _output);
+    }
+
+    [Fact]
+    public void ValueObjectNestedInMulti()
+    {
+        var decl = """
+            [ValueObject<int>(Options = ValueObjectOptions.ImplicitFrom | ValueObjectOptions.Constructor)]
+            public partial struct ProductId;
+
+            [MultiValueObject]
+            public partial record struct MultiValObj
+            {
+                public partial ProductId Id {get;}
+                public partial string Name {get;}
+            }
+            """;
+        var usage = """
+            var vo = new MultiValObj(100, "name");
             """;
 
         Generator.AssertAndRun(decl, usage, _output);
