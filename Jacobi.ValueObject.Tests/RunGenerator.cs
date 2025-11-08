@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 using System.Text;
+using Jacobi.ValueObject.Generator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
@@ -25,8 +26,8 @@ internal static class Generator
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, reportSuppressedDiagnostics: false)
         );
 
-        var generator = new Jacobi.ValueObject.Generator.Generator();
-        var driver = CSharpGeneratorDriver.Create(generator);
+        IIncrementalGenerator[] generators = [new Jacobi.ValueObject.Generator.Generator(), new MultiGenerator()];
+        var driver = CSharpGeneratorDriver.Create(generators);
         var runDriver = driver.RunGeneratorsAndUpdateCompilation(initialCompilation, out compilation, out diagnostics);
 
         var builder = new StringBuilder();
@@ -88,6 +89,7 @@ internal static class Generator
                 }
             }
             """;
+
         var genSources = Compile(sourceCode, out var compilation, out var diagnostics);
         output?.WriteLine(genSources);
 
@@ -99,8 +101,8 @@ internal static class Generator
                 output.WriteLine(diagnostic.ToString());
             }
         }
+
         Xunit.Assert.Empty(diags);
-        //Xunit.Assert.Empty(diagnostics);
         return compilation;
     }
 

@@ -22,3 +22,14 @@ public enum ValueObjectOptions
     /// <summary>Adds (Try)Parse methods.</summary>
     Parsable = 0x40,
 }
+
+[Flags]
+public enum MultiValueObjectOptions
+{
+    /// <summary>Invalid</summary>
+    None = 0,
+    /// <summary>Explicit static (factory) method to initialize a new value object.</summary>
+    ExplicitFrom = 0x01,
+    /// <summary>Constructor to initialize a new value object (default).</summary>
+    Constructor = 0x02,
+}

@@ -9,7 +9,7 @@
     <Title>Jacobi.ValueObject</Title>
     <Company>Jacobi Software</Company>
     <Authors>Marc Jacobi</Authors>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <Description>Generate Value Object implementations for record struct declarations using a code attribute.</Description>
     <Copyright>Copyright (c) 2025 Jacobi Software</Copyright>
     <PackageProjectUrl>https://github.com/obiwanjacobi/Jacobi.ValueObject</PackageProjectUrl>

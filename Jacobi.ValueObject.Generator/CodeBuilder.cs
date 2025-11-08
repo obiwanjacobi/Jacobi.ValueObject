@@ -24,7 +24,7 @@ internal sealed class CodeBuilder
         return this;
     }
 
-    public CodeBuilder PartialStruct(string name, string datatype, bool isRecord)
+    public CodeBuilder PartialStruct(string name, string? datatype, bool isRecord)
     {
         var assemblyName = Assembly.GetExecutingAssembly().GetName();
         Indent().AppendLine($"""[System.CodeDom.Compiler.GeneratedCode("{assemblyName.Name}", "{assemblyName.Version}")]""");
@@ -35,44 +35,45 @@ internal sealed class CodeBuilder
         if (_interfaces != CodeBuilderInterfaces.None)
         {
             var addComma = false;
-            var builder = Indent().Append(" : ");
+            _builder.Append(" : ");
             if ((_interfaces & CodeBuilderInterfaces.IEquatableStruct) != 0)
             {
-                if (addComma) builder.Append(", ");
-                builder.Append($"System.IEquatable<{name}> ");
+                if (addComma) _builder.Append(", ");
+                _builder.Append($"System.IEquatable<{name}> ");
                 addComma = true;
             }
             if ((_interfaces & CodeBuilderInterfaces.IEquatableValue) != 0)
             {
-                if (addComma) builder.Append(", ");
-                builder.Append($"System.IEquatable<{datatype}> ");
+                if (addComma) _builder.Append(", ");
+                _builder.Append($"System.IEquatable<{datatype}> ");
                 addComma = true;
             }
             if ((_interfaces & CodeBuilderInterfaces.IComparableStruct) != 0)
             {
-                if (addComma) builder.Append(", ");
-                builder.Append($"System.IComparable<{name}>");
+                if (addComma) _builder.Append(", ");
+                _builder.Append($"System.IComparable<{name}>");
                 addComma = true;
             }
             if ((_interfaces & CodeBuilderInterfaces.IComparableValue) != 0)
             {
-                if (addComma) builder.Append(", ");
-                builder.Append($"System.IComparable<{datatype}>");
+                if (addComma) _builder.Append(", ");
+                _builder.Append($"System.IComparable<{datatype}>");
                 addComma = true;
             }
             if ((_interfaces & CodeBuilderInterfaces.IParsableStruct) != 0)
             {
-                if (addComma) builder.Append(", ");
-                builder.Append($"System.IParsable<{name}>");
+                if (addComma) _builder.Append(", ");
+                _builder.Append($"System.IParsable<{name}>");
                 addComma = true;
             }
             if ((_interfaces & CodeBuilderInterfaces.ISpanParsableStruct) != 0)
             {
-                if (addComma) builder.Append(", ");
-                builder.Append($"System.ISpanParsable<{name}>");
+                if (addComma) _builder.Append(", ");
+                _builder.Append($"System.ISpanParsable<{name}>");
                 addComma = true;
             }
-            builder.AppendLine();
+
+            _builder.AppendLine();
         }
         Scope();
         return this;
@@ -94,10 +95,49 @@ internal sealed class CodeBuilder
         return this;
     }
 
+    public CodeBuilder Constructor(string name, IDictionary<string, string> properties, bool isPublic, bool hasIsValidMethod)
+    {
+        Indent()
+            .Append(isPublic ? "public" : "private")
+            .Append($" {name}(")
+            .Append(String.Join(", ", properties.Select(p => $"{p.Value} {p.Key.LowerFirstChar()}")))
+            .AppendLine(")");
+        Scope();
+        if (hasIsValidMethod)
+        {
+
+            Indent().Append($"if ({name}.IsValid(")
+                .Append(String.Join(", ", properties.Select(p => p.Key.LowerFirstChar())))
+                .AppendLine("))");
+            Scope();
+            Indent().AppendLine(String.Join(" ", properties.Select(p => $"_{p.Key.LowerFirstChar()} = {p.Key.LowerFirstChar()};")));
+            EndScope();
+            Indent().Append("else ")
+                .AppendLine($$"""throw new Jacobi.ValueObject.ValueObjectException($"Validation Failed. The specified values are not valid for Value Object '{{name}}'.");""");
+        }
+        else
+        {
+            Indent()
+                .AppendLine(String.Join(" ", properties.Select(p => $"_{p.Key.LowerFirstChar()} = {p.Key.LowerFirstChar()};")));
+        }
+        EndScope();
+        return this;
+    }
+
     public CodeBuilder ValueProperty(string name, string datatype)
     {
         Indent().AppendLine($"private readonly {datatype}? _value;");
         Indent().AppendLine($"""public {datatype} Value => _value ?? throw new Jacobi.ValueObject.ValueObjectException("ValueObject '{name}' was not initialized with a valid value.");""");
+        return this;
+    }
+
+    public CodeBuilder Properties(IDictionary<string, string> properties, string name)
+    {
+        foreach (var prop in properties)
+        {
+            Indent().AppendLine($"private readonly {prop.Value}? _{prop.Key.LowerFirstChar()};");
+            Indent().AppendLine($"""public partial {prop.Value} {prop.Key} => _{prop.Key.LowerFirstChar()} ?? throw new Jacobi.ValueObject.ValueObjectException("ValueObject '{name}' was not initialized with a valid value for properties '{prop.Key}'.");""");
+        }
         return this;
     }
 
@@ -119,9 +159,34 @@ internal sealed class CodeBuilder
         return this;
     }
 
+    public CodeBuilder ExplicitFrom(string name, IDictionary<string, string> properties, bool isPartial)
+    {
+        Indent().Append("public static ")
+            .Append(isPartial ? "partial " : "")
+            .Append($"{name} From(")
+            .Append(String.Join(", ", properties.Select(p => $"{p.Value} {p.Key.LowerFirstChar()}")))
+            .Append(") => new(")
+            .Append(String.Join(", ", properties.Select(p => $"{p.Key.LowerFirstChar()}")))
+            .AppendLine(");");
+        return this;
+    }
+
     public CodeBuilder TryCreate(string name, string datatype)
     {
         Indent().AppendLine($$"""public static bool Try({{datatype}} value, out {{name}} valueObject) { if ({{name}}.IsValid(value)) { valueObject = new(value); return true; } valueObject = default; return false; }""");
+        return this;
+    }
+
+    public CodeBuilder TryCreate(string name, IDictionary<string, string> properties)
+    {
+        Indent().Append("public static bool Try(")
+            .Append(String.Join(", ", properties.Select(p => $"{p.Value} {p.Key.LowerFirstChar()}")))
+            .Append($$""", out {{name}} valueObject) { if ({{name}}.IsValid(""")
+            .Append(String.Join(", ", properties.Select(p => p.Key.LowerFirstChar())))
+            .Append(")) { valueObject = new(")
+            .Append(String.Join(", ", properties.Select(p => p.Key.LowerFirstChar())))
+            .AppendLine("); return true; } valueObject = default; return false; }")
+            ;
         return this;
     }
 
@@ -183,6 +248,22 @@ internal sealed class CodeBuilder
             Indent().AppendLine($"if ({datatype}.TryParse(str, formatProvider, out var dtResult)) {{ result = new (dtResult); return true; }}");
             Indent().AppendLine("result = default; return false;");
             EndScope();
+        }
+
+        return this;
+    }
+
+    public CodeBuilder AddInterfaceImplementations(IDictionary<string, string> properties, string name)
+    {
+
+        if ((_interfaces & CodeBuilderInterfaces.IEquatableStruct) != 0)
+        {
+            Indent().Append($"public bool Equals({name} value) => ")
+                .Append(String.Join(" && ", properties.Select(p => $"{p.Key}.Equals(value.{p.Key})")))
+                .AppendLine(";");
+
+            Indent().AppendLine($"public static bool operator ==({name} valueObject, {name} value) => valueObject.Equals(value);");
+            Indent().AppendLine($"public static bool operator !=({name} valueObject, {name} value) => !valueObject.Equals(value);");
         }
 
         return this;

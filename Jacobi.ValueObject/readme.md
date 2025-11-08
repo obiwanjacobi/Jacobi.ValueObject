@@ -2,8 +2,6 @@
 
 Read more on what a Value Object is [here (wikipedia)](https://en.wikipedia.org/wiki/Value_object).
 
-*) Currently `Jacobi.ValueObject` only supports single values - one field.
-
 The assumption in the implementation is:
 
 - A ValueObject is immutable. The code generation adds the `readonly` modifier (so you don't have to).
@@ -18,32 +16,56 @@ The assumption in the implementation is:
 using Jacobi.ValueObject;
 ```
 
-The `ValueObjectAttribte` works on both `partial struct` and `partial record struct` declarations.
+The library distinguishes between two types of value objects:
+
+- `ValueObject(Attribute)` that contains a single value.
+- `MultiValueObject(Attribute)` that contains multiple values.
+
+
+Both the `ValueObjectAttribte` and `MultiValueObjectAttribute` work on both `partial struct` and `partial record struct` declarations.
 
 - `partial struct`: The `IEquatable<ValueObject>` interface is automatically added and implemented.
 - `partial record struct`: The `IEquatable<ValueObject>` interface is added and implemented by the compiler (because record).
 
-Two attribute syntax variations:
+Some attribute syntax examples:
 
 ```csharp
+// single value
 [ValueObject<Guid>]
 public partial record struct ProductId;
 
 [ValueObject(typeof(Guid))]
 public partial struct ProductId;
+
+// multi value
+[MultiValueObject]
+public partial struct Product
+{
+  public partial Guid Id { get; }
+  public partial string Name { get; }
+}
 ```
 
-> We call the `Guid` the 'datatype' and the `ProductId` the 'ValueObject'.
+> We call the `Guid` the 'datatype' and the `ProductId` (or `Product`) the 'ValueObject'.
 
 Minimal effort:
 
 ```csharp
 [ValueObject<Guid>]
 public partial struct ProductId;
-
 ...
-
 var prodId = new ProductId(Guid.NewGuid());
+```
+
+```csharp
+[MultiValueObject]
+public partial struct Product
+{
+    public partial Guid Id { get; }
+    public partial string Name { get; }
+}
+...
+var prod = new Product(Guid.NewGuid(), "Product");
 ```
 
 Using Options to manage what code (support) is generated.
@@ -51,11 +73,11 @@ Using Options to manage what code (support) is generated.
 ```csharp
 [ValueObject<Guid>(Options = ValueObjectOptions.Parsable)]
 public partial record struct ProductId;
-
 ...
-
 var prodId = ProductId.Parse("<guid>", null); // no format provider
 ```
+
+> Note that the `MultiValueObject` only supports a few options.
 
 Implement validation by providing a `static bool IsValid(<datatype> value)` method.
 You determine the accessibility (`public`, `internal`, `private`).
@@ -66,26 +88,38 @@ public partial record struct ProductId
 {
     public static bool IsValid(Guid id) => id != Guid.Empty;
 }
-
 ...
-
 var prodId = new ProductId(Guid.Empty);   // <- will throw
 ```
 
+```csharp
+[MultiValueObject]
+public partial record struct Product
+{
+    public partial Guid Id { get; }
+    public partial string Name { get; }
+
+    public static bool IsValid(Guid id, string name) => id != Guid.Empty && !String.IsNullOrEmpty(name);
+}
+...
+var prod = new Product(Guid.Empty, "");   // <- will throw
+```
 
 ## Options
 
-| Option | Description |
-| -- | -- |
-| Constructor | Makes the value-constructor public. This option is default if none are specified. |
-| ImpicitFrom | Adds an implicit assignment operator that allows assigning the `<datatype>` value to a new instance of the ValueObject. Additionally an implementation for the `IEquatable<datatype>` interface will also be generated. |
-| ImplicitAs | Adds an implicit assignment operator that allows assigning the ValueObject to a `<datatype>` variable. Additionally an implementation for the `IEquatable<datatype>` interface will also be generated. |
-| ExplicitFrom | Adds a static factory method `From` that construct a new ValueObject instance from a specified `<datatype>` value. |
-| ToString | Overrides the `record struct` dotnet implementation to return the `ValueObject.Value` as string.
-| Comparable | Implements the `IComparable<ValueObject>` interface to compare between ValueObject instances. If ImplicitFrom and/or ImplictAs options are also active, an implementation for `IComparable<datatype>` is also generated. |
-| Parsable | Implements the `IParsable<ValueObject>` and `ISpanParsable<ValueObject>` interfaces to provide `Parse` and `TryParse` methods. Note that this option cannot be used in combination with a `<datatype>` of string (`System.String`).
+The 'Multi' column indicates support for the `MultiValueObjectAttribute` options (Yes/No).
 
-As an alternative there is also an option to declare the interfaces explicitly and forgo specifying options.
+| Option | Multi | Description |
+| -- | -- | -- |
+| Constructor | Y | Makes the value-constructor public. This option is default if none are specified. |
+| ImpicitFrom | N | Adds an implicit assignment operator that allows assigning the `<datatype>` value to a new instance of the ValueObject. Additionally an implementation for the `IEquatable<datatype>` interface will also be generated. |
+| ImplicitAs | N | Adds an implicit assignment operator that allows assigning the ValueObject to a `<datatype>` variable. Additionally an implementation for the `IEquatable<datatype>` interface will also be generated. |
+| ExplicitFrom | Y | Adds a static factory method `From` that construct a new ValueObject instance from a specified `<datatype>` value. |
+| ToString | N | Overrides the `record struct` dotnet implementation to return the `ValueObject.Value` as string.
+| Comparable | N | Implements the `IComparable<ValueObject>` interface to compare between ValueObject instances. If ImplicitFrom and/or ImplictAs options are also active, an implementation for `IComparable<datatype>` is also generated. |
+| Parsable | N | Implements the `IParsable<ValueObject>` and `ISpanParsable<ValueObject>` interfaces to provide `Parse` and `TryParse` methods. Note that this option cannot be used in combination with a `<datatype>` of string (`System.String`).
+
+As an alternative for `ValueObjectAttribute` there is also an option to declare the interfaces explicitly and forgo specifying options.
 
 The folowing interfaces are supported:
 
@@ -101,18 +135,46 @@ Note that `IEquatable<ValueObject>` is always present. Either generated by the c
 
 ## Methods
 
-Implement a `static bool IsValid(<datatype> value)` method in your ValueObject and it will be detected and used when constructing new instances.
+Implement a `static bool IsValid(<datatype>)` method in your ValueObject for `ValueObjectAttribute` or `static bool IsValid(<property datatypes in order>)` for `MultiValueObjectAttribute` and it will be detected and used when constructing new instances.
 
 ```csharp
 [ValueObject<Guid>]
-public partial record struct ProductId
+public partial struct ProductId
 {
     // public, internal or private - you decide
     public static bool IsValid(Guid id) => id != Guid.Empty;
 }
 ```
+```csharp
+[MultiValueObject]
+public partial struct Product
+{
+    public partial Guid Id { get; }
+    public partial string Name { get; }
 
-Declare a `public static partial bool From(<datatype> value);` partial method (no implementation) in your ValueObject and it will be detected and implemented similar to specifying the `ExplicitFrom` option.
+    // public, internal or private - you decide
+    public static bool IsValid(Guid id, string name) => id != Guid.Empty && !String.IsNullOrEmpty(name);
+}
+```
+
+Note that if a `static bool IsValid()` method is provided an extra (static) method `Try` is generated that uses the `IsValid` to optionally create a new instance of the ValueObject.
+
+```csharp
+[ValueObject<Guid>]
+public partial struct ProductId
+{
+    public static bool IsValid(Guid id) => id != Guid.Empty;
+}
+...
+if (ProductId.Try(Guid.NewGuid(), out var valueObject))
+{
+   // use 'valueObject' here
+}
+```
+
+This works similarly in the case of `MultiValueObjectAttribute`.
+
+Declare a `public static partial ValueObject From(<datatype>);` partial method (no implementation) for `ValueObjectAttribute` or `public static partial MultiValueObject From(<property datatypes in order>)` for `MultiValueObjectAttribute` in your ValueObject and it will be detected and implemented similar to specifying the `ExplicitFrom` option.
 
 ```csharp
 [ValueObject<Guid>]
@@ -127,9 +189,8 @@ public partial record struct ProductId
 The `Jacobi.ValueObject.ValueObjectException` is throw in these circumstances.
 
 - The default (parameterless) constructor of the ValueObject is called.
-- The `Value` property is accessed while the instance of the ValueObject was not correctly initialized.
-- If the ValueObject implements the `IsValid` static method and the value fails the test.
-
+- The `Value` or custom properties are accessed while the instance of the ValueObject was not correctly initialized.
+- If the ValueObject implements the `IsValid` static method and the value(s) fails the test.
 
 ## Project File
 
@@ -143,21 +204,21 @@ To see the generated source files for the value objects, add to your `.csproj` p
 
 ## Compiler Errors
 
-| Code | Error |
-| -- | -- |
-| VO001 | You have declare a ValueObject in the global namespace. It is mandatory to declare your ValueObjects inside a namespace. |
-| VO002 | You did `[ValueObject(null)]` - It cannot work without a datatype. |
-| VO003 | You used the Parsable option on a ValueObject with the `string`/`Systsem.String` datatype. |
-
+| Code | Multi | Error |
+| -- | -- | -- |
+| VO001 | Y | You have declare a ValueObject in the global namespace. It is mandatory to declare your ValueObjects inside a namespace. |
+| VO002 | N | You did `[ValueObject(null)]` - It cannot work without a datatype. |
+| VO003 | N | You used the Parsable option on a ValueObject with the `string`/`Systsem.String` datatype. |
 
 `CSXXXX` Compiler errors caused by you not following the rules :-)
 
 - Do not specify a default constructor. So do NOT do this: `public partial record struct ProductId()`
 - Do not use the `ToString` option and also implement a `string ToString()` override in your ValueObject.
+- You did not specify the `IsValid` 'properties' in the correct order for a `MultiValueObjectAttribute`.
 
 ## Generated Code
 
-Here is an example of the code that will be generated when all options and features are active.
+Here is an example of the code that will be generated for a `ValueObjectAttribute` when all options and features are active.
 Note that there are slight differences between a `struct` and a `record struct` -most notably `IEquatable<ValueObject>`.
 
 The comments in the code (normally not generated) serve as a short explanation for the sets of members.

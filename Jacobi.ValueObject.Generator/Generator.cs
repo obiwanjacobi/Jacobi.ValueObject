@@ -210,6 +210,6 @@ public sealed class Generator : IIncrementalGenerator
 
     private static bool HasInterface(CodeBuilderInterfaces interfaces, CodeBuilderInterfaces intf)
         => (interfaces & intf) == intf;
-
-    private record class ValueObjectInfo(TypeDeclarationSyntax Declaration, INamedTypeSymbol Symbol);
 }
+
+internal record class ValueObjectInfo(TypeDeclarationSyntax Declaration, INamedTypeSymbol Symbol);
