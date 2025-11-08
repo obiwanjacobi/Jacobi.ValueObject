@@ -47,7 +47,7 @@ internal static class Generator
     {
         using var stream = new MemoryStream();
         var emitResult = compilation.Emit(stream);
-        Xunit.Assert.Empty(emitResult.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+        Xunit.Assert.Empty(emitResult.Diagnostics.Filter());
 
         stream.Position = 0;
 
@@ -93,7 +93,7 @@ internal static class Generator
         var genSources = Compile(sourceCode, out var compilation, out var diagnostics);
         output?.WriteLine(genSources);
 
-        Diagnostic[] diags = [.. diagnostics, .. compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error)];
+        Diagnostic[] diags = [.. diagnostics, .. compilation.GetDiagnostics().Filter()];
         if (output is not null)
         {
             foreach (Diagnostic diagnostic in diags)
@@ -135,5 +135,10 @@ internal static class Generator
         if (output is not null)
             output.WriteLine(genSources);
         return [.. diagnostics, .. compilation.GetDiagnostics()];
+    }
+
+    private static IEnumerable<Diagnostic> Filter(this IEnumerable<Diagnostic> diagnostics)
+    {
+        return diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error || d.Severity == DiagnosticSeverity.Warning);
     }
 }

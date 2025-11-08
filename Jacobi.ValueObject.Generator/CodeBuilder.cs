@@ -141,6 +141,22 @@ internal sealed class CodeBuilder
         return this;
     }
 
+    public CodeBuilder OverrideEqualsAndGetHashCode(string name)
+    {
+        Indent().AppendLine($"public override bool Equals(object? obj) => obj is {name} && Equals(({name})obj);");
+        Indent().AppendLine($"public override int GetHashCode() => Value.GetHashCode();");
+        return this;
+    }
+
+    public CodeBuilder OverrideEqualsAndGetHashCode(IDictionary<string, string> properties, string name)
+    {
+        Indent().AppendLine($"public override bool Equals(object? obj) => obj is {name} && Equals(({name})obj);");
+        Indent().Append($"public override int GetHashCode() => System.HashCode.Combine(")
+            .Append(String.Join(", ", properties.Select(p => $"{p.Key}")))
+            .AppendLine(");");
+        return this;
+    }
+
     public CodeBuilder ImplicitFrom(string name, string datatype)
     {
         Indent().AppendLine($"public static implicit operator {name}({datatype} value) => new(value);");

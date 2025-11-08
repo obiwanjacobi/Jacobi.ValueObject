@@ -79,6 +79,8 @@ public sealed class Generator : IIncrementalGenerator
                 .ValueProperty(name, datatype)
                 ;
 
+            if (!isRecordStruct)
+                builder.OverrideEqualsAndGetHashCode(name);
             if (HasOption(options, ValueObjectOptions.ImplicitFrom))
                 builder.ImplicitFrom(name, datatype);
             if (HasOption(options, ValueObjectOptions.ImplicitAs))

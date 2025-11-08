@@ -61,6 +61,8 @@ public sealed class MultiGenerator : IIncrementalGenerator
                 .Properties(properties, name)
                 ;
 
+            if (!isRecordStruct)
+                builder.OverrideEqualsAndGetHashCode(properties, name);
             if (HasOption(options, MultiValueObjectOptions.ExplicitFrom) || fromMethod is not null)
                 builder.ExplicitFrom(name, properties, isPartial: fromMethod is not null);
             if (HasOption(options, MultiValueObjectOptions.Deconstruct))
