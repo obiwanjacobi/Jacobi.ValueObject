@@ -1,6 +1,6 @@
 # Value Object Source Generator
 
-This package contains a Roslyn Source Generator that creates Value Object implementations from `partial record struct` declarations.
+This package contains a Roslyn Source Generator that creates Value Object implementations from `partial struct` or `partial record struct` declarations.
 
 The goal of this project is to provide a library that is simple to use and good (enough) for most cases.
 
