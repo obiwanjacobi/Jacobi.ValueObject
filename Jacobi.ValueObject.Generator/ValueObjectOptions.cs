@@ -32,4 +32,6 @@ public enum MultiValueObjectOptions
     ExplicitFrom = 0x01,
     /// <summary>Constructor to initialize a new value object (default).</summary>
     Constructor = 0x02,
+    /// <summary>Add deconstruct support.</summary>
+    Deconstruct = 0x04,
 }

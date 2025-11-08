@@ -190,6 +190,17 @@ internal sealed class CodeBuilder
         return this;
     }
 
+    public CodeBuilder Deconstruct(IDictionary<string, string> properties)
+    {
+        Indent().Append("public void Deconstruct(")
+            .Append(String.Join(", ", properties.Select(p => $"out {p.Value} {p.Key.LowerFirstChar()}")))
+            .Append(") { ")
+            .Append(String.Join(" ", properties.Select(p => $"{p.Key.LowerFirstChar()} = {p.Key};")))
+            .AppendLine(" }")
+            ;
+        return this;
+    }
+
     public CodeBuilder ToString(string name)
     {
         Indent().AppendLine($"public override string ToString() => Value.ToString();");

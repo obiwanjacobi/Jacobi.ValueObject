@@ -107,17 +107,19 @@ var prod = new Product(Guid.Empty, "");   // <- will throw
 
 ## Options
 
+The 'Single' column indicates support for the `ValueObjectAttribute` options (Yes/No).
 The 'Multi' column indicates support for the `MultiValueObjectAttribute` options (Yes/No).
 
-| Option | Multi | Description |
+| Option | Single | Multi | Description |
 | -- | -- | -- |
-| Constructor | Y | Makes the value-constructor public. This option is default if none are specified. |
-| ImpicitFrom | N | Adds an implicit assignment operator that allows assigning the `<datatype>` value to a new instance of the ValueObject. Additionally an implementation for the `IEquatable<datatype>` interface will also be generated. |
-| ImplicitAs | N | Adds an implicit assignment operator that allows assigning the ValueObject to a `<datatype>` variable. Additionally an implementation for the `IEquatable<datatype>` interface will also be generated. |
-| ExplicitFrom | Y | Adds a static factory method `From` that construct a new ValueObject instance from a specified `<datatype>` value. |
-| ToString | N | Overrides the `record struct` dotnet implementation to return the `ValueObject.Value` as string.
-| Comparable | N | Implements the `IComparable<ValueObject>` interface to compare between ValueObject instances. If ImplicitFrom and/or ImplictAs options are also active, an implementation for `IComparable<datatype>` is also generated. |
-| Parsable | N | Implements the `IParsable<ValueObject>` and `ISpanParsable<ValueObject>` interfaces to provide `Parse` and `TryParse` methods. Note that this option cannot be used in combination with a `<datatype>` of string (`System.String`).
+| Constructor | Y | Y | Makes the value-constructor public. This option is default if none are specified. |
+| ImpicitFrom | Y | N | Adds an implicit assignment operator that allows assigning the `<datatype>` value to a new instance of the ValueObject. Additionally an implementation for the `IEquatable<datatype>` interface will also be generated. |
+| ImplicitAs | Y | N | Adds an implicit assignment operator that allows assigning the ValueObject to a `<datatype>` variable. Additionally an implementation for the `IEquatable<datatype>` interface will also be generated. |
+| ExplicitFrom | Y | Y | Adds a static factory method `From` that construct a new ValueObject instance from a specified `<datatype>` value. |
+| ToString | Y | N | Overrides the `record struct` dotnet implementation to return the `ValueObject.Value` as string.
+| Comparable | Y | N | Implements the `IComparable<ValueObject>` interface to compare between ValueObject instances. If ImplicitFrom and/or ImplictAs options are also active, an implementation for `IComparable<datatype>` is also generated. |
+| Parsable | Y | N | Implements the `IParsable<ValueObject>` and `ISpanParsable<ValueObject>` interfaces to provide `Parse` and `TryParse` methods. Note that this option cannot be used in combination with a `<datatype>` of string (`System.String`). |
+| Deconstruct | N | Y | Allows deconstruction syntax (`(var id, var name) = prod;`) for `MultiValueObject` instances. |
 
 As an alternative for `ValueObjectAttribute` there is also an option to declare the interfaces explicitly and forgo specifying options.
 

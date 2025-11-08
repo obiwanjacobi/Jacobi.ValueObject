@@ -105,4 +105,25 @@ public class MultiValueObjectTest
 
         Generator.AssertAndRun(decl, usage, _output);
     }
+
+    [Fact]
+    public void Deconstruct()
+    {
+        var decl = """
+            [MultiValueObject(Options = MultiValueObjectOptions.Deconstruct | MultiValueObjectOptions.Constructor)]
+            public partial struct MultiValObj
+            {
+                public partial int Id {get;}
+                public partial string Name {get;}
+            }
+            """;
+        var usage = """
+            var vo = new MultiValObj(100, "name");
+            (var id, var name) = vo;
+            Assert.Equal(100, id);
+            Assert.Equal("name", name);
+            """;
+
+        Generator.AssertAndRun(decl, usage, _output);
+    }
 }
