@@ -9,7 +9,6 @@ https://github.com/dotnet/roslyn/blob/main/src/RoslynAnalyzers/Microsoft.CodeAna
 ## TODO
 
 - [ ] FindMethod parameter (type) checking (both generators)
-- [ ] Deconstruct support for `struct`
 - [ ] Serialization System.Text.Json + Newtonsoft.Json (JsonConvertor) - Can these classes be nested private?
 - [ ] AspnetCore (TypeConvertor)/EFCore (ValueConvertor) support? (serialization?)
 - [ ] 
