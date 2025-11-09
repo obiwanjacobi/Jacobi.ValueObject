@@ -36,9 +36,9 @@ public sealed class MultiGenerator : IIncrementalGenerator
                     options = (MultiValueObjectOptions)optionsArg.Value;
             }
 
-            var properties = FindProperties(valObjInfo.Declaration).ToDictionary(p => p.Identifier.Text, p => p.Type.ToString());
-            var isValidMethod = FindMethod(valObjInfo.Declaration, "IsValid", "bool", [.. properties.Select(p => p.Value)], isStatic: true, isPartial: false);
-            var fromMethod = FindMethod(valObjInfo.Declaration, "From", name, [.. properties.Select(p => p.Value)], isStatic: true, isPartial: true);
+            var properties = FindProperties(valObjInfo.Declaration, valObjInfo.Model);
+            var isValidMethod = FindMethod(valObjInfo.Declaration, "IsValid", "bool", [.. properties.Select(p => p.Value.type)], isStatic: true, isPartial: false);
+            var fromMethod = FindMethod(valObjInfo.Declaration, "From", name, [.. properties.Select(p => p.Value.type)], isStatic: true, isPartial: true);
 
             // default options - at least a constructor
             if (options == MultiValueObjectOptions.None)
@@ -55,20 +55,23 @@ public sealed class MultiGenerator : IIncrementalGenerator
 
             var builder = new CodeBuilder(interfaces)
                 .Namespace(ns)
-                .PartialStruct(name, null, isRecordStruct)
+                .PartialStruct(name, null, isRecordStruct, isMulti: true)
                 .DefaultConstructor(name)
                 .Constructor(name, properties, HasOption(options, MultiValueObjectOptions.Constructor), isValidMethod is not null)
                 .Properties(properties, name)
                 ;
 
             if (!isRecordStruct)
+            {
+                builder.ObjectToString(properties, name);
                 builder.OverrideEqualsAndGetHashCode(properties, name);
+            }
             if (HasOption(options, MultiValueObjectOptions.ExplicitFrom) || fromMethod is not null)
                 builder.ExplicitFrom(name, properties, isPartial: fromMethod is not null);
             if (HasOption(options, MultiValueObjectOptions.Deconstruct))
                 builder.Deconstruct(properties);
             if (isValidMethod is not null)
-                builder.TryCreate(name, properties);
+                builder.TryCreate(properties, name);
 
             builder.AddInterfaceImplementations(properties, name);
 
@@ -76,10 +79,18 @@ public sealed class MultiGenerator : IIncrementalGenerator
         });
     }
 
-    private static IEnumerable<PropertyDeclarationSyntax> FindProperties(TypeDeclarationSyntax typeDecl)
+    private static IDictionary<string, (string type, bool isStruct)> FindProperties(TypeDeclarationSyntax typeDecl, SemanticModel model)
     {
-        return typeDecl.Members.OfType<PropertyDeclarationSyntax>()
+        var properties = typeDecl.Members.OfType<PropertyDeclarationSyntax>()
             .Where(p => p.Modifiers.Any(SyntaxKind.PartialKeyword) && p.Modifiers.Any(SyntaxKind.PublicKeyword));
+
+        var props = properties.ToDictionary(p => p.Identifier.Text, p =>
+            {
+                var type = model.GetDeclaredSymbol(p)!.Type;
+                return (type: p.Type.ToString(), isStruct: type.TypeKind == TypeKind.Struct);
+            });
+
+        return props!;
     }
 
     private static MethodDeclarationSyntax? FindMethod(TypeDeclarationSyntax typeDecl, string name, string returnType, string[] parameterTypes, bool isStatic, bool isPartial)
@@ -113,12 +124,12 @@ public sealed class MultiGenerator : IIncrementalGenerator
                     var attributes = structDecl.AttributeLists.SelectMany(l => l.Attributes);
                     var valObj = attributes.FirstOrDefault(a => a.Name.ToString() == "MultiValueObject");
                     // is it our attribute?
-                    if (valObj != null)
+                    if (valObj is not null)
                     {
                         var symbol = model.GetDeclaredSymbol(structDecl);
                         if (symbol is not null)
                         {
-                            return new ValueObjectInfo(structDecl, symbol);
+                            return new ValueObjectInfo(structDecl, symbol, model);
                         }
                     }
                     return null;

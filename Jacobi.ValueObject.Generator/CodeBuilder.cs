@@ -3,6 +3,8 @@ using System.Text;
 
 namespace Jacobi.ValueObject.Generator;
 
+using IProperties = IDictionary<string, (string type, bool isStruct)>;
+
 internal sealed class CodeBuilder
 {
     private readonly StringBuilder _builder = new();
@@ -24,11 +26,11 @@ internal sealed class CodeBuilder
         return this;
     }
 
-    public CodeBuilder PartialStruct(string name, string? datatype, bool isRecord)
+    public CodeBuilder PartialStruct(string name, string? datatype, bool isRecord, bool isMulti)
     {
         var assemblyName = Assembly.GetExecutingAssembly().GetName();
         Indent().AppendLine($"""[System.CodeDom.Compiler.GeneratedCode("{assemblyName.Name}", "{assemblyName.Version}")]""");
-        Indent().AppendLine($$"""[System.Diagnostics.DebuggerDisplay("Value = {Value}")]""");
+        if (!isMulti) Indent().AppendLine($$"""[System.Diagnostics.DebuggerDisplay("Value = {Value}")]""");
         Indent().Append("readonly partial ")
             .Append(isRecord ? "record " : "")
             .Append($"struct {name}");
@@ -95,30 +97,30 @@ internal sealed class CodeBuilder
         return this;
     }
 
-    public CodeBuilder Constructor(string name, IDictionary<string, string> properties, bool isPublic, bool hasIsValidMethod)
+    public CodeBuilder Constructor(string name, IProperties properties, bool isPublic, bool hasIsValidMethod)
     {
         Indent()
-            .Append(isPublic ? "public" : "private")
-            .Append($" {name}(")
-            .Append(String.Join(", ", properties.Select(p => $"{p.Value} {p.Key.LowerFirstChar()}")))
-            .AppendLine(")");
+                    .Append(isPublic ? "public" : "private")
+                    .Append($" {name}(")
+                    .AppendPropertiesAsParameters(properties)
+                    .AppendLine(")");
+
         Scope();
         if (hasIsValidMethod)
         {
 
             Indent().Append($"if ({name}.IsValid(")
-                .Append(String.Join(", ", properties.Select(p => p.Key.LowerFirstChar())))
+                .AppendPropertiesAsArguments(properties, asMembers: false)
                 .AppendLine("))");
             Scope();
-            Indent().AppendLine(String.Join(" ", properties.Select(p => $"_{p.Key.LowerFirstChar()} = {p.Key.LowerFirstChar()};")));
+            Indent().AppendPropertiesAssignments(properties, toPrivates: true).AppendLine();
             EndScope();
             Indent().Append("else ")
                 .AppendLine($$"""throw new Jacobi.ValueObject.ValueObjectException($"Validation Failed. The specified values are not valid for Value Object '{{name}}'.");""");
         }
         else
         {
-            Indent()
-                .AppendLine(String.Join(" ", properties.Select(p => $"_{p.Key.LowerFirstChar()} = {p.Key.LowerFirstChar()};")));
+            Indent().AppendPropertiesAssignments(properties, toPrivates: true).AppendLine();
         }
         EndScope();
         return this;
@@ -131,12 +133,12 @@ internal sealed class CodeBuilder
         return this;
     }
 
-    public CodeBuilder Properties(IDictionary<string, string> properties, string name)
+    public CodeBuilder Properties(IProperties properties, string name)
     {
         foreach (var prop in properties)
         {
-            Indent().AppendLine($"private readonly {prop.Value}? _{prop.Key.LowerFirstChar()};");
-            Indent().AppendLine($"""public partial {prop.Value} {prop.Key} => _{prop.Key.LowerFirstChar()} ?? throw new Jacobi.ValueObject.ValueObjectException("ValueObject '{name}' was not initialized with a valid value for properties '{prop.Key}'.");""");
+            Indent().AppendLine($"private readonly {prop.Value.type}? _{prop.Key.LowerFirstChar()};");
+            Indent().AppendLine($"""public partial {prop.Value.type} {prop.Key} => _{prop.Key.LowerFirstChar()} ?? throw new Jacobi.ValueObject.ValueObjectException("ValueObject '{name}' was not initialized with a valid value for properties '{prop.Key}'.");""");
         }
         return this;
     }
@@ -148,11 +150,11 @@ internal sealed class CodeBuilder
         return this;
     }
 
-    public CodeBuilder OverrideEqualsAndGetHashCode(IDictionary<string, string> properties, string name)
+    public CodeBuilder OverrideEqualsAndGetHashCode(IProperties properties, string name)
     {
         Indent().AppendLine($"public override bool Equals(object? obj) => obj is {name} && Equals(({name})obj);");
         Indent().Append($"public override int GetHashCode() => System.HashCode.Combine(")
-            .Append(String.Join(", ", properties.Select(p => $"{p.Key}")))
+            .AppendPropertiesAsArguments(properties, asMembers: true)
             .AppendLine(");");
         return this;
     }
@@ -175,14 +177,16 @@ internal sealed class CodeBuilder
         return this;
     }
 
-    public CodeBuilder ExplicitFrom(string name, IDictionary<string, string> properties, bool isPartial)
+    public CodeBuilder ExplicitFrom(string name, IProperties properties, bool isPartial)
     {
         Indent().Append("public static ")
             .Append(isPartial ? "partial " : "")
             .Append($"{name} From(")
-            .Append(String.Join(", ", properties.Select(p => $"{p.Value} {p.Key.LowerFirstChar()}")))
+            //.Append(String.Join(", ", properties.Select(p => $"{p.Value.type} {p.Key.LowerFirstChar()}")))
+            .AppendPropertiesAsParameters(properties)
             .Append(") => new(")
-            .Append(String.Join(", ", properties.Select(p => $"{p.Key.LowerFirstChar()}")))
+            //.Append(String.Join(", ", properties.Select(p => $"{p.Key.LowerFirstChar()}")))
+            .AppendPropertiesAsArguments(properties, asMembers: false)
             .AppendLine(");");
         return this;
     }
@@ -193,33 +197,41 @@ internal sealed class CodeBuilder
         return this;
     }
 
-    public CodeBuilder TryCreate(string name, IDictionary<string, string> properties)
+    public CodeBuilder TryCreate(IProperties properties, string name)
     {
         Indent().Append("public static bool Try(")
-            .Append(String.Join(", ", properties.Select(p => $"{p.Value} {p.Key.LowerFirstChar()}")))
+            .AppendPropertiesAsParameters(properties)
             .Append($$""", out {{name}} valueObject) { if ({{name}}.IsValid(""")
-            .Append(String.Join(", ", properties.Select(p => p.Key.LowerFirstChar())))
+            .AppendPropertiesAsArguments(properties, asMembers: false)
             .Append(")) { valueObject = new(")
-            .Append(String.Join(", ", properties.Select(p => p.Key.LowerFirstChar())))
+            .AppendPropertiesAsArguments(properties, asMembers: false)
             .AppendLine("); return true; } valueObject = default; return false; }")
             ;
         return this;
     }
 
-    public CodeBuilder Deconstruct(IDictionary<string, string> properties)
+    public CodeBuilder Deconstruct(IProperties properties)
     {
         Indent().Append("public void Deconstruct(")
-            .Append(String.Join(", ", properties.Select(p => $"out {p.Value} {p.Key.LowerFirstChar()}")))
+            .AppendPropertiesAsOutParameters(properties)
             .Append(") { ")
-            .Append(String.Join(" ", properties.Select(p => $"{p.Key.LowerFirstChar()} = {p.Key};")))
+            .AppendPropertiesAssignments(properties, toPrivates: false)
             .AppendLine(" }")
             ;
         return this;
     }
 
-    public CodeBuilder ToString(string name)
+    public CodeBuilder ValueToString()
     {
         Indent().AppendLine($"public override string ToString() => Value.ToString();");
+        return this;
+    }
+
+    public CodeBuilder ObjectToString(IProperties properties, string name)
+    {
+        Indent().Append($"public override string ToString() => $\"{name} {{{{")
+            .Append(String.Join(", ", properties.Select(p => $"{p.Key} = {{{p.Key}}}")))
+            .AppendLine("}}\";");
         return this;
     }
 
@@ -280,9 +292,8 @@ internal sealed class CodeBuilder
         return this;
     }
 
-    public CodeBuilder AddInterfaceImplementations(IDictionary<string, string> properties, string name)
+    public CodeBuilder AddInterfaceImplementations(IProperties properties, string name)
     {
-
         if ((_interfaces & CodeBuilderInterfaces.IEquatableStruct) != 0)
         {
             Indent().Append($"public bool Equals({name} value) => ")
@@ -346,6 +357,26 @@ internal enum CodeBuilderInterfaces
     IComparableValue = 0x08,
     IParsableStruct = 0x10,
     ISpanParsableStruct = 0x20,
+}
+
+internal static class StringBuilderExtensions
+{
+    public static StringBuilder AppendPropertiesAsParameters(this StringBuilder builder, IProperties properties)
+        => builder.Append(String.Join(", ", properties.Select(p => $"{p.Value.type} {p.Key.LowerFirstChar()}")));
+    public static StringBuilder AppendPropertiesAsOutParameters(this StringBuilder builder, IProperties properties)
+        => builder.Append(String.Join(", ", properties.Select(p => $"out {p.Value.type} {p.Key.LowerFirstChar()}")));
+
+    public static StringBuilder AppendPropertiesAsArguments(this StringBuilder builder, IProperties properties, bool asMembers)
+        => asMembers
+            ? builder.Append(String.Join(", ", properties.Select(p => p.Key)))
+            : builder.Append(String.Join(", ", properties.Select(p => p.Key.LowerFirstChar())))
+        ;
+
+    public static StringBuilder AppendPropertiesAssignments(this StringBuilder builder, IProperties properties, bool toPrivates)
+        => toPrivates
+            ? builder.Append(String.Join(" ", properties.Select(p => $"_{p.Key.LowerFirstChar()} = {p.Key.LowerFirstChar()};")))
+            : builder.Append(String.Join(" ", properties.Select(p => $"{p.Key.LowerFirstChar()} = {p.Key};")))
+        ;
 }
 
 

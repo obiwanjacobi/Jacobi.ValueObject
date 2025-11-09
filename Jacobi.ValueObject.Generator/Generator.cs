@@ -63,7 +63,7 @@ public sealed class Generator : IIncrementalGenerator
 
             var builder = new CodeBuilder(interfaces)
                 .Namespace(ns)
-                .PartialStruct(name, datatype, isRecordStruct)
+                .PartialStruct(name, datatype, isRecordStruct, isMulti: false)
                 .DefaultConstructor(name)
                 .Constructor(name, datatype, HasOption(options, ValueObjectOptions.Constructor), isValidMethod is not null)
                 .ValueProperty(name, datatype)
@@ -78,7 +78,7 @@ public sealed class Generator : IIncrementalGenerator
             if (HasOption(options, ValueObjectOptions.ExplicitFrom) || fromMethod is not null)
                 builder.ExplicitFrom(name, datatype, isPartial: fromMethod is not null);
             if (HasOption(options, ValueObjectOptions.ToString))
-                builder.ToString(name);
+                builder.ValueToString();
             if (isValidMethod is not null)
                 builder.TryCreate(name, datatype);
 
@@ -164,12 +164,12 @@ public sealed class Generator : IIncrementalGenerator
                         return name == "ValueObject" || name.StartsWith("ValueObject<");
                     });
                     // is it our attribute?
-                    if (valObj != null)
+                    if (valObj is not null)
                     {
                         var symbol = model.GetDeclaredSymbol(structDecl);
                         if (symbol is not null)
                         {
-                            return new ValueObjectInfo(structDecl, symbol);
+                            return new ValueObjectInfo(structDecl, symbol, model);
                         }
                     }
                     return null;
@@ -222,4 +222,4 @@ public sealed class Generator : IIncrementalGenerator
         => (interfaces & intf) == intf;
 }
 
-internal record class ValueObjectInfo(TypeDeclarationSyntax Declaration, INamedTypeSymbol Symbol);
+internal record class ValueObjectInfo(TypeDeclarationSyntax Declaration, INamedTypeSymbol Symbol, SemanticModel Model);
