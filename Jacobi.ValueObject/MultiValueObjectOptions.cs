@@ -1,7 +1,7 @@
 ﻿namespace Jacobi.ValueObject;
 
 /// <summary>
-/// Fine-tuning what to generate for a value object.
+/// Fine-tuning what to generate for a multi value object.
 /// </summary>
 [Flags]
 public enum MultiValueObjectOptions

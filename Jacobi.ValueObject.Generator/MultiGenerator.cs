@@ -36,7 +36,11 @@ public sealed class MultiGenerator : IIncrementalGenerator
                     options = (MultiValueObjectOptions)optionsArg.Value;
             }
 
-            var properties = FindProperties(valObjInfo.Declaration, valObjInfo.Model);
+            if (!TryFindProperties(spc, name, valObjInfo.Declaration, valObjInfo.Model, out var properties))
+            {
+                // there were errors
+                return;
+            }
             var isValidMethod = FindMethod(valObjInfo.Declaration, "IsValid", "bool", [.. properties.Select(p => p.Value.type)], isStatic: true, isPartial: false);
             var fromMethod = FindMethod(valObjInfo.Declaration, "From", name, [.. properties.Select(p => p.Value.type)], isStatic: true, isPartial: true);
 
@@ -79,18 +83,31 @@ public sealed class MultiGenerator : IIncrementalGenerator
         });
     }
 
-    private static IDictionary<string, (string type, bool isStruct)> FindProperties(TypeDeclarationSyntax typeDecl, SemanticModel model)
+    private static bool TryFindProperties(SourceProductionContext spc, string name, TypeDeclarationSyntax typeDecl, SemanticModel model, out IDictionary<string, (string type, bool isStruct)> properties)
     {
-        var properties = typeDecl.Members.OfType<PropertyDeclarationSyntax>()
+        var prop = typeDecl.Members.OfType<PropertyDeclarationSyntax>()
             .Where(p => p.Modifiers.Any(SyntaxKind.PartialKeyword) && p.Modifiers.Any(SyntaxKind.PublicKeyword));
 
-        var props = properties.ToDictionary(p => p.Identifier.Text, p =>
+        bool hasErrors = false;
+        properties = prop.ToDictionary(p => p.Identifier.Text, p =>
             {
-                var type = model.GetDeclaredSymbol(p)!.Type;
+                if (p.AccessorList?.Accessors.Any(acc => acc.Keyword.Text != "get") == true)
+                {
+                    spc.PropertyMustBeReadOnly(name, p.Identifier.Text, p.GetLocation());
+                    hasErrors = true;
+                }
+
+                var propSymbol = model.GetDeclaredSymbol(p)!;
+                if (propSymbol.ReturnsByRef)
+                {
+                    spc.PropertyNotReturnByRef(name, p.Identifier.Text, p.GetLocation());
+                    hasErrors = true;
+                }
+                var type = propSymbol.Type;
                 return (type: p.Type.ToString(), isStruct: type.TypeKind == TypeKind.Struct);
             });
 
-        return props!;
+        return !hasErrors;
     }
 
     private static MethodDeclarationSyntax? FindMethod(TypeDeclarationSyntax typeDecl, string name, string returnType, string[] parameterTypes, bool isStatic, bool isPartial)

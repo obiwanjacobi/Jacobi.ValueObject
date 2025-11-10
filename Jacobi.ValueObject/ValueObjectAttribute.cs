@@ -1,18 +1,18 @@
 ﻿namespace Jacobi.ValueObject;
 
 /// <summary>
-/// Identifies the record struct as a value object.
+/// Identifies the struct or record struct as a (single) value object.
 /// </summary>
-/// <remarks>
+/// <example>
 /// <code>
 /// [ValueObject(typeof(string))]
 /// public partial record struct YourValueObject;
 /// </code>
 /// <code>
 /// [ValueObject(typeof(int), Options = ValueObjectOptions.ExplicitFrom)]
-/// public partial record struct YourValueObject;
+/// public partial struct YourValueObject;
 /// </code>
-/// </remarks>
+/// </example>
 [AttributeUsage(AttributeTargets.Struct, AllowMultiple = false, Inherited = false)]
 public sealed class ValueObjectAttribute : Attribute
 {
@@ -42,16 +42,16 @@ public sealed class ValueObjectAttribute : Attribute
 /// Identifies the record struct as a value object.
 /// </summary>
 /// <typeparam name="T">The datatype of the value object.</typeparam>
-/// <remarks>
+/// <example>
 /// <code>
-/// [ValueObject<string>]
+/// [ValueObject&lt;string&gt;]
 /// public partial record struct YourValueObject;
 /// </code>
 /// <code>
-/// [ValueObject<int>(Options = ValueObjectOptions.ExplicitFrom)]
+/// [ValueObject&lt;int7gt;(ValueObjectOptions.ExplicitFrom)]
 /// public partial record struct YourValueObject;
 /// </code>
-/// </remarks>
+/// </example>
 [AttributeUsage(AttributeTargets.Struct, AllowMultiple = false, Inherited = false)]
 public sealed class ValueObjectAttribute<T> : Attribute
 {

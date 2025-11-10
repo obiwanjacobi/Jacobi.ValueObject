@@ -1,7 +1,7 @@
 ﻿namespace Jacobi.ValueObject;
 
 /// <summary>
-/// Fine-tuning what to generate for a value object.
+/// Fine-tuning what to generate for a (single) value object.
 /// </summary>
 [Flags]
 public enum ValueObjectOptions
@@ -20,6 +20,6 @@ public enum ValueObjectOptions
     Constructor = 0x10,
     /// <summary>Adds IComparable[T] interface implementations.</summary>
     Comparable = 0x20,
-    /// <summary>Adds (Try)Parse methods.</summary>
+    /// <summary>Add the IParsable[T} and ISpanParsable[T] interfaces.</summary>
     Parsable = 0x40,
 }

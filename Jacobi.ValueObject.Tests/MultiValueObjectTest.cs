@@ -168,4 +168,77 @@ public class MultiValueObjectTest
 
         Generator.AssertAndRun(decl, usage, _output);
     }
+
+    [Fact]
+    public void WithKeyword_Error()
+    {
+        var source = """
+            using Jacobi.ValueObject;
+            namespace Test.Errors;
+            [MultiValueObject]
+            public partial record struct MultiValObj
+            {
+                public partial int Id {get;}
+                public partial string Name {get;}
+            }
+            public static class Program {
+                public static void Main() {
+                    var vo1 = new MultiValObj(100, "name");
+                    var vo2 = vo1 with { Id = 42 };
+            }}
+            """;
+
+        var diagnostics = Generator.Errors(source, _output);
+        Assert.NotEmpty(diagnostics);
+        var error = diagnostics.First();
+        Assert.Equal("CS0200", error.Id);
+    }
+
+    [Fact]
+    public void MultiPropertiesInit_Error()
+    {
+        var source = """
+            using Jacobi.ValueObject;
+            namespace Test.Errors;
+            [MultiValueObject]
+            public partial record struct MultiValObj
+            {
+                public partial int Id {get;init;}
+                public partial string Name {get;}
+            }
+            public static class Program {
+                public static void Main() {
+                    var vo = new MultiValObj(100, "name");
+            }}
+            """;
+
+        var diagnostics = Generator.Errors(source, _output);
+        Assert.NotEmpty(diagnostics);
+        var error = diagnostics.First();
+        Assert.Equal("VO004", error.Id);
+    }
+
+    [Fact]
+    public void MultiPropertiesRef_Error()
+    {
+        var source = """
+            using Jacobi.ValueObject;
+            namespace Test.Errors;
+            [MultiValueObject]
+            public partial record struct MultiValObj
+            {
+                public partial ref int Id {get;}
+                public partial string Name {get;}
+            }
+            public static class Program {
+                public static void Main() {
+                    var vo = new MultiValObj(100, "name");
+            }}
+            """;
+
+        var diagnostics = Generator.Errors(source, _output);
+        Assert.NotEmpty(diagnostics);
+        var error = diagnostics.First();
+        Assert.Equal("VO005", error.Id);
+    }
 }

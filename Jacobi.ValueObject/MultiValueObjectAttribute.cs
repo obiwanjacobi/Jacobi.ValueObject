@@ -3,7 +3,7 @@
 /// <summary>
 /// Identifies the record struct as a value object.
 /// </summary>
-/// <remarks>
+/// <example>
 /// <code>
 /// [MultiValueObject)]
 /// public partial struct YourValueObject
@@ -12,7 +12,7 @@
 ///     public partial string Name { get; }
 /// }
 /// </code>
-/// </remarks>
+/// </example>
 [AttributeUsage(AttributeTargets.Struct, AllowMultiple = false, Inherited = false)]
 public sealed class MultiValueObjectAttribute : Attribute
 {
