@@ -260,12 +260,15 @@ You'll find the generated `Xxxx_ValueObject.g.cs` source code files in the `<Pro
 | VO001 | Y | You have declare a ValueObject in the global namespace. It is mandatory to declare your ValueObjects inside a namespace. |
 | VO002 | N | You did `[ValueObject(null)]` - It cannot work without a datatype. |
 | VO003 | N | You used the Parsable option on a ValueObject with the `string`/`Systsem.String` datatype. |
+| VO004 | Y | You used `set` or `init` in you property declarations of the multi-value object. Properties must be readon-only. |
+| VO005 | Y | You specified `ref` on the property type. You cannot use `ref'. |
 
 `CSXXXX` Compiler errors caused by you not following the rules :-)
 
 - Do not specify a default constructor. So do NOT do this: `public partial record struct ProductId()`
 - Do not use the `ToString` option and also implement a `string ToString()` override in your ValueObject.
 - You did not specify the `IsValid` 'properties' in the correct order for a `MultiValueObjectAttribute`.
+- Multi: IsValid() parameter errors. You probably mixed up the order of the parameters.
 
 ## Generated Code
 
