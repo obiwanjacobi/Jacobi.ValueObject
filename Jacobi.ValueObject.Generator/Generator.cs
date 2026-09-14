@@ -21,7 +21,7 @@ public sealed class Generator : IIncrementalGenerator
                 return;
             }
 
-            GetNameTypeAndOptions(valObjInfo.Symbol, out var ns, out var name, out var datatype, out var options);
+            GetNameTypeAndOptions(valObjInfo.Symbol, out var ns, out var name, out var datatype, out var datatypeIsStruct, out var options);
             if (datatype is null)
             {
                 spc.DataTypeIsNull(valObjInfo.Symbol.Name, valObjInfo.Declaration.GetLocation());
@@ -32,8 +32,10 @@ public sealed class Generator : IIncrementalGenerator
             var fromMethod = FindMethod(valObjInfo.Declaration, "From", name, datatype, isStatic: true, isPartial: true);
 
             // default options - at least a constructor
-            if (options == ValueObjectOptions.None)
-                options = ValueObjectOptions.Constructor;
+            if (options == ValueObjectOptions.None ||
+                HasOption(options, ValueObjectOptions.SystemTextJson) ||
+                HasOption(options, ValueObjectOptions.NewtonsoftJson))
+                options |= ValueObjectOptions.Constructor;
 
             var isRecordStruct = valObjInfo.Declaration.IsKind(SyntaxKind.RecordStructDeclaration);
 
@@ -61,7 +63,13 @@ public sealed class Generator : IIncrementalGenerator
                 return;
             }
 
-            var builder = new CodeBuilder(interfaces)
+            var features = CodeBuilderFeatures.None;
+            if (HasOption(options, ValueObjectOptions.SystemTextJson))
+                features |= CodeBuilderFeatures.SystemTextJson;
+            if (HasOption(options, ValueObjectOptions.NewtonsoftJson))
+                features |= CodeBuilderFeatures.NewtonsoftJson;
+
+            var builder = new CodeBuilder(interfaces, features)
                 .Namespace(ns)
                 .PartialStruct(name, datatype, isRecordStruct, isMulti: false)
                 .DefaultConstructor(name)
@@ -85,6 +93,22 @@ public sealed class Generator : IIncrementalGenerator
             builder.AddInterfaceImplementations(name, datatype);
 
             spc.AddSource($"{name}_ValueObject.g.cs", builder.Build());
+
+            if ((features & CodeBuilderFeatures.SystemTextJson) > 0)
+            {
+                builder.Clear();
+                builder.Namespace(ns)
+                    .SystemTextJsonConverter(name, datatype, datatypeIsStruct);
+                spc.AddSource($"{name}_SystemTextJson.g.cs", builder.Build());
+            }
+
+            if ((features & CodeBuilderFeatures.NewtonsoftJson) > 0)
+            {
+                builder.Clear();
+                builder.Namespace(ns)
+                    .NewtonsoftJsonConverter(name, datatype, datatypeIsStruct);
+                spc.AddSource($"{name}_NewtonsoftJson.g.cs", builder.Build());
+            }
         });
     }
 
@@ -105,10 +129,11 @@ public sealed class Generator : IIncrementalGenerator
         return null;
     }
 
-    private static void GetNameTypeAndOptions(INamedTypeSymbol symbol, out string ns, out string name, out string? datatype, out ValueObjectOptions options)
+    private static void GetNameTypeAndOptions(INamedTypeSymbol symbol, out string ns, out string name, out string? datatype, out bool datatypeIsStruct, out ValueObjectOptions options)
     {
         ns = symbol.ContainingNamespace.ToDisplayString();
         name = symbol.Name;
+        datatypeIsStruct = false;
 
         // Find the ValueObjectAttribute on the symbol
         var valueObjectAttr = symbol.GetAttributes()
@@ -122,12 +147,15 @@ public sealed class Generator : IIncrementalGenerator
         {
             // [ValueObject<T>]
             datatype = valueObjectAttr.AttributeClass?.TypeArguments[0].ToDisplayString();
+            datatypeIsStruct = valueObjectAttr.AttributeClass?.TypeArguments[0].TypeKind == TypeKind.Struct;
             isGeneric = true;
         }
         else if (valueObjectAttr.ConstructorArguments.Length > 0)
         {
             // [ValueObject(typeof(T))]
-            datatype = ((INamedTypeSymbol?)valueObjectAttr.ConstructorArguments[0].Value)?.ToDisplayString();
+            var datatypeSymbol = (INamedTypeSymbol?)valueObjectAttr.ConstructorArguments[0].Value;
+            datatype = datatypeSymbol?.ToDisplayString();
+            datatypeIsStruct = datatypeSymbol?.TypeKind == TypeKind.Struct;
         }
 
         options = ValueObjectOptions.None;

@@ -45,8 +45,10 @@ public sealed class MultiGenerator : IIncrementalGenerator
             var fromMethod = FindMethod(valObjInfo.Declaration, "From", name, [.. properties.Select(p => p.Value.type)], isStatic: true, isPartial: true);
 
             // default options - at least a constructor
-            if (options == MultiValueObjectOptions.None)
-                options = MultiValueObjectOptions.Constructor;
+            if (options == MultiValueObjectOptions.None ||
+                HasOption(options, MultiValueObjectOptions.SystemTextJson) ||
+                HasOption(options, MultiValueObjectOptions.NewtonsoftJson))
+                options |= MultiValueObjectOptions.Constructor;
 
             var isRecordStruct = valObjInfo.Declaration.IsKind(SyntaxKind.RecordStructDeclaration);
 
@@ -57,7 +59,13 @@ public sealed class MultiGenerator : IIncrementalGenerator
             else  // add it for struct
                 interfaces |= CodeBuilderInterfaces.IEquatableStruct;
 
-            var builder = new CodeBuilder(interfaces)
+            var features = CodeBuilderFeatures.None;
+            if (HasOption(options, MultiValueObjectOptions.SystemTextJson))
+                features |= CodeBuilderFeatures.SystemTextJson;
+            if (HasOption(options, MultiValueObjectOptions.NewtonsoftJson))
+                features |= CodeBuilderFeatures.NewtonsoftJson;
+
+            var builder = new CodeBuilder(interfaces, features)
                 .Namespace(ns)
                 .PartialStruct(name, null, isRecordStruct, isMulti: true)
                 .DefaultConstructor(name)
@@ -80,6 +88,22 @@ public sealed class MultiGenerator : IIncrementalGenerator
             builder.AddInterfaceImplementations(properties, name);
 
             spc.AddSource($"{name}_ValueObject.g.cs", builder.Build());
+
+            if ((features & CodeBuilderFeatures.SystemTextJson) > 0)
+            {
+                builder.Clear();
+                builder.Namespace(ns)
+                    .SystemTextJsonConverter(name, properties);
+                spc.AddSource($"{name}_SystemTextJson.g.cs", builder.Build());
+            }
+
+            if ((features & CodeBuilderFeatures.NewtonsoftJson) > 0)
+            {
+                builder.Clear();
+                builder.Namespace(ns)
+                    .NewtonsoftJsonConverter(name, properties);
+                spc.AddSource($"{name}_NewtonsoftJson.g.cs", builder.Build());
+            }
         });
     }
 

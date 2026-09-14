@@ -20,6 +20,8 @@ internal static class Generator
              MetadataReference.CreateFromFile(Path.Combine(RuntimeEnvironment.GetRuntimeDirectory(), "System.Runtime.dll")),
              MetadataReference.CreateFromFile(typeof(List<>).Assembly.Location),
              MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
+             MetadataReference.CreateFromFile(typeof(System.Text.Json.JsonSerializer).Assembly.Location),
+             MetadataReference.CreateFromFile(typeof(Newtonsoft.Json.JsonConvert).Assembly.Location),
              MetadataReference.CreateFromFile(typeof(Jacobi.ValueObject.ValueObjectAttribute).Assembly.Location),
              MetadataReference.CreateFromFile(typeof(Xunit.Assert).Assembly.Location),
             ],

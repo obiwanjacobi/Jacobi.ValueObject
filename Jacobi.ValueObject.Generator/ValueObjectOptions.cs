@@ -21,6 +21,10 @@ public enum ValueObjectOptions
     Comparable = 0x20,
     /// <summary>Adds (Try)Parse methods.</summary>
     Parsable = 0x40,
+    /// <summary>Add System.Text.Json serialization support.</summary>
+    SystemTextJson = 0x80,
+    /// <summary>Add Newtonsoft.Json serialization support.</summary>
+    NewtonsoftJson = 0x100,
 }
 
 [Flags]
@@ -34,4 +38,8 @@ public enum MultiValueObjectOptions
     Constructor = 0x02,
     /// <summary>Add deconstruct support.</summary>
     Deconstruct = 0x04,
+    /// <summary>Add System.Text.Json serialization support.</summary>
+    SystemTextJson = 0x08,
+    /// <summary>Add Newtonsoft.Json serialization support.</summary>
+    NewtonsoftJson = 0x10,
 }

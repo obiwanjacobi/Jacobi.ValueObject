@@ -22,4 +22,8 @@ public enum ValueObjectOptions
     Comparable = 0x20,
     /// <summary>Add the IParsable[T} and ISpanParsable[T] interfaces.</summary>
     Parsable = 0x40,
+    /// <summary>Add System.Text.Json serialization support.</summary>
+    Json = 0x80,
+    /// <summary>Add Newtonsoft.Json serialization support.</summary>
+    NewtonsoftJson = 0x100,
 }

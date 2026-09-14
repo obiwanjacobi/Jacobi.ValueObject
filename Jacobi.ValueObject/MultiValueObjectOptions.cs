@@ -14,4 +14,8 @@ public enum MultiValueObjectOptions
     Constructor = 0x02,
     /// <summary>Add deconstruct support.</summary>
     Deconstruct = 0x04,
+    /// <summary>Add System.Text.Json serialization support.</summary>
+    Json = 0x08,
+    /// <summary>Add Newtonsoft.Json serialization support.</summary>
+    NewtonsoftJson = 0x10,
 }

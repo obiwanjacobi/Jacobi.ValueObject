@@ -8,7 +8,7 @@ https://github.com/dotnet/roslyn/blob/main/src/RoslynAnalyzers/Microsoft.CodeAna
 
 ## TODO
 
-- [ ] Serialization System.Text.Json + Newtonsoft.Json (JsonConvertor) - Can these classes be nested private?
+- [x] Serialization System.Text.Json + Newtonsoft.Json (JsonConvertor) - Can these classes be nested private?
 - [ ] AspnetCore (TypeConvertor)/EFCore (ValueConvertor) support? (serialization?)
 - [ ] FindMethod parameter (type) checking (both generators)
 - [ ] Multi: Do we need to detect if property-types are structs (not primitives) and do ref-struct passing (avoids copying)? Can we do both? Make it an option?

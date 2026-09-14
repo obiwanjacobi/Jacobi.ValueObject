@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="readme.md" />
+  </Folder>
+  <Project Path="Jacobi.ValueObject.Generator/Jacobi.ValueObject.Generator.csproj" />
+  <Project Path="Jacobi.ValueObject.Tests/Jacobi.ValueObject.Tests.csproj" />
+  <Project Path="Jacobi.ValueObject/Jacobi.ValueObject.csproj" />
+  <Properties Name="ExtensibilityGlobals" Scope="PostLoad">
+    <Property Name="FileExplorer" Value="Jacobi.ValueObject.NuGet\" />
+  </Properties>
+</Solution>

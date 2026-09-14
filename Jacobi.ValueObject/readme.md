@@ -91,6 +91,13 @@ public partial struct Product
 (var id, var name) = new Product(Guid.NewGuid(), "Product");
 ```
 
+Json serialization support is available through options:
+
+- `ValueObjectOptions.Json` / `MultiValueObjectOptions.Json` for `System.Text.Json`
+- `ValueObjectOptions.NewtonsoftJson` / `MultiValueObjectOptions.NewtonsoftJson` for `Newtonsoft.Json`
+
+Single-value objects serialize as scalar JSON values. Multi-value objects serialize as JSON objects.
+
 This also works:
 
 ```csharp
@@ -166,6 +173,8 @@ The 'Multi' column indicates support for the `MultiValueObjectAttribute` options
 | ToString | Y | N | Overrides the `record struct` dotnet implementation to return the `ValueObject.Value` as string.
 | Comparable | Y | N | Implements the `IComparable<ValueObject>` interface to compare between ValueObject instances. If ImplicitFrom and/or ImplictAs options are also active, an implementation for `IComparable<datatype>` is also generated. |
 | Parsable | Y | N | Implements the `IParsable<ValueObject>` and `ISpanParsable<ValueObject>` interfaces to provide `Parse` and `TryParse` methods. Note that this option cannot be used in combination with a `<datatype>` of string (`System.String`). |
+| Json | Y | Y | Adds `System.Text.Json` serialization support. |
+| NewtonsoftJson | Y | Y | Adds `Newtonsoft.Json` serialization support. |
 | Deconstruct | N | Y | Allows deconstruction syntax (`(var id, var name) = prod;`) for `MultiValueObject` instances. |
 
 As an alternative for `ValueObjectAttribute` there is also an option to declare the interfaces explicitly and forgo specifying options.
@@ -347,10 +356,8 @@ namespace YourNamespace
 }
 ```
 
-
 ## Unsupported
 
-- Json Serialization (System.Text.Json or Newtonsoft.Json)
 - AspNet (TypeConvertor)
 - EFcore (ValueConvertor)
 
