@@ -11,12 +11,12 @@ public class ValueObjectMethods
     public void DefaultConstructor_Error()
     {
         var decl = """
+            #pragma warning disable CS0219  // warning for unused var (vo)
             [ValueObject<int>]
             public partial record struct ValObj;
             """;
         var usage = """
-            var vo = new ValObj();
-            // should throw
+            ValObj vo = default;    // should throw
             """;
 
         Generator.ExpectException<ValueObjectException>(decl, usage, _output);

@@ -5,7 +5,7 @@ Read more on what a Value Object is [here (wikipedia)](https://en.wikipedia.org/
 The assumption in the implementation is:
 
 - A ValueObject is immutable. The code generation adds the `readonly` modifier (so you don't have to).
-- A ValueObject is compared by content/value - not by reference. Basic `struct` behavior in dotnet.
+- A ValueObject is compared by content/value - not by reference. Basic `struct` identity behavior in dotnet.
 - A valid ValueObject never contains a value of `null`. So do not specify nullable types as 'datatype'.
 
 ## Usage
@@ -20,7 +20,6 @@ The library distinguishes between two types of value objects:
 
 - `ValueObject(Attribute)` that contains a single value.
 - `MultiValueObject(Attribute)` that contains multiple values.
-
 
 Both the `ValueObjectAttribte` and `MultiValueObjectAttribute` work on both `partial struct` and `partial record struct` declarations.
 
@@ -90,13 +89,6 @@ public partial struct Product
 ...
 (var id, var name) = new Product(Guid.NewGuid(), "Product");
 ```
-
-Json serialization support is available through options:
-
-- `ValueObjectOptions.Json` / `MultiValueObjectOptions.Json` for `System.Text.Json`
-- `ValueObjectOptions.NewtonsoftJson` / `MultiValueObjectOptions.NewtonsoftJson` for `Newtonsoft.Json`
-
-Single-value objects serialize as scalar JSON values. Multi-value objects serialize as JSON objects.
 
 This also works:
 
@@ -173,11 +165,12 @@ The 'Multi' column indicates support for the `MultiValueObjectAttribute` options
 | ToString | Y | N | Overrides the `record struct` dotnet implementation to return the `ValueObject.Value` as string.
 | Comparable | Y | N | Implements the `IComparable<ValueObject>` interface to compare between ValueObject instances. If ImplicitFrom and/or ImplictAs options are also active, an implementation for `IComparable<datatype>` is also generated. |
 | Parsable | Y | N | Implements the `IParsable<ValueObject>` and `ISpanParsable<ValueObject>` interfaces to provide `Parse` and `TryParse` methods. Note that this option cannot be used in combination with a `<datatype>` of string (`System.String`). |
-| Json | Y | Y | Adds `System.Text.Json` serialization support. |
-| NewtonsoftJson | Y | Y | Adds `Newtonsoft.Json` serialization support. |
 | Deconstruct | N | Y | Allows deconstruction syntax (`(var id, var name) = prod;`) for `MultiValueObject` instances. |
+| SystemTextJson | Y | Y | Adds `System.Text.Json` serialization support. Single-value objects serialize as scalar JSON values. Multi-value objects serialize as JSON objects.|
+| NewtonsoftJson | Y | Y | Adds `Newtonsoft.Json` serialization support. Single-value objects serialize as scalar JSON values. Multi-value objects serialize as JSON objects.|
+| UnlockDefaultCtor | Y | Y | Allows the default constructor to be called. Needed for making Arrays of value objects. Use with care - only when really needed. |
 
-As an alternative for `ValueObjectAttribute` there is also an option to declare the interfaces explicitly and forgo specifying options.
+As an alternative for `ValueObjectAttribute` there is also an option to declare the interfaces explicitly and forgo specifying the related options.
 
 The folowing interfaces are supported:
 
@@ -246,9 +239,11 @@ public partial record struct ProductId
 
 The `Jacobi.ValueObject.ValueObjectException` is throw in these circumstances.
 
-- The default (parameterless) constructor of the ValueObject is called.
+- The default (parameterless) constructor of the ValueObject is called* (and UnlockDefaultCtor is not active).
 - The `Value` or custom properties are accessed while the instance of the ValueObject was not correctly initialized.
 - If the ValueObject implements the `IsValid` static method and the value(s) fails the test.
+
+*) Note that as of version 1.4.0 the default constructor has an `ObsoleteAttribute` which makes calling it a compile error, but not in all cases (`Array`s, `default`).
 
 ## Project File
 
@@ -275,9 +270,9 @@ You'll find the generated `Xxxx_ValueObject.g.cs` source code files in the `<Pro
 `CSXXXX` Compiler errors caused by you not following the rules :-)
 
 - Do not specify a default constructor. So do NOT do this: `public partial record struct ProductId()`
+- You have called the default constructor and not used the UnlockDefaultCtor option (use with care!).
 - Do not use the `ToString` option and also implement a `string ToString()` override in your ValueObject.
 - You did not specify the `IsValid` 'properties' in the correct order for a `MultiValueObjectAttribute`.
-- Multi: IsValid() parameter errors. You probably mixed up the order of the parameters.
 
 ## Generated Code
 

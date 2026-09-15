@@ -64,6 +64,8 @@ public sealed class MultiGenerator : IIncrementalGenerator
                 features |= CodeBuilderFeatures.SystemTextJson;
             if (HasOption(options, MultiValueObjectOptions.NewtonsoftJson))
                 features |= CodeBuilderFeatures.NewtonsoftJson;
+            if (HasOption(options, MultiValueObjectOptions.UnlockDefaultCtor))
+                features |= CodeBuilderFeatures.UnlockDefaultCtor;
 
             var builder = new CodeBuilder(interfaces, features)
                 .Namespace(ns)

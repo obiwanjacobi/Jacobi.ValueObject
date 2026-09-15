@@ -68,6 +68,8 @@ public sealed class Generator : IIncrementalGenerator
                 features |= CodeBuilderFeatures.SystemTextJson;
             if (HasOption(options, ValueObjectOptions.NewtonsoftJson))
                 features |= CodeBuilderFeatures.NewtonsoftJson;
+            if (HasOption(options, ValueObjectOptions.UnlockDefaultCtor))
+                features |= CodeBuilderFeatures.UnlockDefaultCtor;
 
             var builder = new CodeBuilder(interfaces, features)
                 .Namespace(ns)

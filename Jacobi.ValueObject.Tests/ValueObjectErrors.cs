@@ -71,4 +71,25 @@ public class ValueObjectErrors
         var error = diagnostics.First();
         Assert.Equal("VO003", error.Id);
     }
+
+    [Fact]
+    public void DontCallDefaultCtor()
+    {
+        var source = """
+            using Jacobi.ValueObject;
+            namespace Test.Errors;
+            [ValueObject<int>]
+            public partial struct ValObj;
+
+            class Test {
+            void CallCtor() {
+            var valObj = new ValObj();
+            }}
+            """;
+
+        var diagnostics = Generator.Errors(source, _output);
+        Assert.Single(diagnostics);
+        var error = diagnostics.First();
+        Assert.Equal("CS0619", error.Id);
+    }
 }

@@ -23,7 +23,9 @@ public enum ValueObjectOptions
     /// <summary>Add the IParsable[T} and ISpanParsable[T] interfaces.</summary>
     Parsable = 0x40,
     /// <summary>Add System.Text.Json serialization support.</summary>
-    Json = 0x80,
+    SystemTextJson = 0x80,
     /// <summary>Add Newtonsoft.Json serialization support.</summary>
     NewtonsoftJson = 0x100,
+    /// <summary>Allow calling the default constructor.</summary>
+    UnlockDefaultCtor = 0x200,
 }

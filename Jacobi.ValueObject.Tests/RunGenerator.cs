@@ -80,6 +80,7 @@ internal static class Generator
     {
         var sourceCode = $$"""
             using System;
+            using System.Linq;
             using System.Collections.Generic;
             using Jacobi.ValueObject;
             using Xunit;

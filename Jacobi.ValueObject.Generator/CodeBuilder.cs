@@ -89,7 +89,12 @@ internal sealed class CodeBuilder
 
     public CodeBuilder DefaultConstructor(string name)
     {
-        Indent().AppendLine($"""public {name}() => throw new Jacobi.ValueObject.ValueObjectException("Do not call the default constructor for ValueObject '{name}'.");""");
+        if ((_features & CodeBuilderFeatures.UnlockDefaultCtor) == 0)
+        {
+            var txt = $"Do not call the default constructor for ValueObject '{name}'.";
+            Indent().AppendLine($"""[System.Obsolete("{txt} It will throw an exception.", error: true)]""");
+            Indent().AppendLine($"""public {name}() => throw new Jacobi.ValueObject.ValueObjectException("{txt}");""");
+        }
         return this;
     }
 
@@ -556,6 +561,7 @@ internal enum CodeBuilderFeatures
     None = 0x00,
     SystemTextJson = 0x01,
     NewtonsoftJson = 0x02,
+    UnlockDefaultCtor = 0x04,
 }
 
 internal static class StringBuilderExtensions

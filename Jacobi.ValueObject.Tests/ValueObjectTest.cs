@@ -152,4 +152,20 @@ public class ValueObjectTest
 
         Generator.AssertAndRun(decl, usage, _output);
     }
+
+
+    [Fact]
+    public void ToArray()
+    {
+        var decl = """
+            [ValueObject<int>(ValueObjectOptions.Constructor | ValueObjectOptions.UnlockDefaultCtor)]
+            public partial struct ValObj;
+            """;
+        var usage = """
+            int[] arr = [1, 2, 3, 4, 5];
+            var voArr = arr.Select(i => new ValObj(i)).ToArray();
+            """;
+
+        Generator.AssertAndRun(decl, usage, _output);
+    }
 }

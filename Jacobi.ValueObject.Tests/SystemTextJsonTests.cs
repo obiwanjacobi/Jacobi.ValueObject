@@ -11,7 +11,7 @@ public class SystemTextJsonTests
     public void ValueObject_RoundTrips_AsScalarJson()
     {
         var decl = """
-            [ValueObject<int>(ValueObjectOptions.Json)]
+            [ValueObject<int>(ValueObjectOptions.SystemTextJson)]
             public partial record struct ValObj;
             """;
         var usage = """
@@ -30,7 +30,7 @@ public class SystemTextJsonTests
     public void MultiValueObject_RoundTrips_WithCamelCasePropertyNames()
     {
         var decl = """
-            [MultiValueObject(MultiValueObjectOptions.Json)]
+            [MultiValueObject(MultiValueObjectOptions.SystemTextJson)]
             public partial record struct MultiValObj
             {
                 public partial int Id { get; }
@@ -59,7 +59,7 @@ public class SystemTextJsonTests
     public void MultiValueObject_Deserializes_CaseInsensitive()
     {
         var decl = """
-            [MultiValueObject(MultiValueObjectOptions.Json)]
+            [MultiValueObject(MultiValueObjectOptions.SystemTextJson)]
             public partial record struct MultiValObj
             {
                 public partial int Id { get; }

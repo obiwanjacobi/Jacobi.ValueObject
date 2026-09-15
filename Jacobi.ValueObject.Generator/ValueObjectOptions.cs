@@ -25,6 +25,8 @@ public enum ValueObjectOptions
     SystemTextJson = 0x80,
     /// <summary>Add Newtonsoft.Json serialization support.</summary>
     NewtonsoftJson = 0x100,
+    /// <summary>Allow calling the default constructor.</summary>
+    UnlockDefaultCtor = 0x200,
 }
 
 [Flags]
@@ -42,4 +44,6 @@ public enum MultiValueObjectOptions
     SystemTextJson = 0x08,
     /// <summary>Add Newtonsoft.Json serialization support.</summary>
     NewtonsoftJson = 0x10,
+    /// <summary>Allow calling the default constructor.</summary>
+    UnlockDefaultCtor = 0x20,
 }
