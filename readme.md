@@ -7,6 +7,7 @@ A C# Roslyn source generator that auto-generates immutable, strongly-typed Value
 - Ensures immutability and value-based equality comparison by default
 - Supports optional features like parsing, implicit conversions, deconstruction, and custom validation
 - Supports Json serialization, both System.Text.Json and Newtonsoft.Json
+- Supports customization of Exceptions thrown.
 - Reduces boilerplate code while maintaining strong typing and compile-time safety
 - Licensed under LGPL v2.1
 
