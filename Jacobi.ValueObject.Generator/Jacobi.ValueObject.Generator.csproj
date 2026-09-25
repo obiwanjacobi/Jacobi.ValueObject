@@ -23,4 +23,15 @@
     <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
     <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
   </ItemGroup>
+
+  <PropertyGroup Condition="Exists('../../../../_keyfile/Jacobi.snk')">
+    <SignAssembly>true</SignAssembly>
+    <DelaySign>false</DelaySign>
+    <AssemblyOriginatorKeyFile>../../../../_keyfile/Jacobi.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+
+  <Target Name="LogAssemblySigning" BeforeTargets="CoreCompile" Condition="'$(SignAssembly)' == 'true' and Exists('$(AssemblyOriginatorKeyFile)')">
+    <Message Importance="high" Text="Signing assembly using key file: $(AssemblyOriginatorKeyFile)" />
+  </Target>
+  
 </Project>
