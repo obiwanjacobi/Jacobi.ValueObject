@@ -10,9 +10,12 @@ public sealed class MultiGenerator : IIncrementalGenerator
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var valObjInfos = FindDeclarationsAndSymbols(context);
+        var hasExceptionFactory = context.CompilationProvider.Select(static (compilation, _) => compilation.HasExceptionFactory());
+        var generationInput = valObjInfos.Combine(hasExceptionFactory);
 
-        context.RegisterSourceOutput(valObjInfos, (spc, valObjInfo) =>
+        context.RegisterSourceOutput(generationInput, (spc, source) =>
         {
+            var (valObjInfo, exceptionFactoryPresent) = source;
             if (valObjInfo is null) return;
             if (valObjInfo.Symbol.ContainingNamespace.IsGlobalNamespace)
             {
@@ -41,8 +44,8 @@ public sealed class MultiGenerator : IIncrementalGenerator
                 // there were errors
                 return;
             }
-            var isValidMethod = FindMethod(valObjInfo.Declaration, "IsValid", "bool", [.. properties.Select(p => p.Value.type)], isStatic: true, isPartial: false);
-            var fromMethod = FindMethod(valObjInfo.Declaration, "From", name, [.. properties.Select(p => p.Value.type)], isStatic: true, isPartial: true);
+            var isValidMethod = FindMethod(valObjInfo.Declaration, "IsValid", "bool", [.. properties.ValueTypes()], isStatic: true, isPartial: false);
+            var fromMethod = FindMethod(valObjInfo.Declaration, "From", name, [.. properties.ValueTypes()], isStatic: true, isPartial: true);
 
             // default options - at least a constructor
             if (options == MultiValueObjectOptions.None ||
@@ -66,6 +69,8 @@ public sealed class MultiGenerator : IIncrementalGenerator
                 features |= CodeBuilderFeatures.NewtonsoftJson;
             if (HasOption(options, MultiValueObjectOptions.UnlockDefaultCtor))
                 features |= CodeBuilderFeatures.UnlockDefaultCtor;
+            if (exceptionFactoryPresent)
+                features |= CodeBuilderFeatures.ExceptionFactory;
 
             var builder = new CodeBuilder(interfaces, features)
                 .Namespace(ns)
@@ -109,29 +114,31 @@ public sealed class MultiGenerator : IIncrementalGenerator
         });
     }
 
-    private static bool TryFindProperties(SourceProductionContext spc, string name, TypeDeclarationSyntax typeDecl, SemanticModel model, out IDictionary<string, (string type, bool isStruct)> properties)
+    private static bool TryFindProperties(SourceProductionContext spc, string name, TypeDeclarationSyntax typeDecl, SemanticModel model, out PropertiesLookup properties)
     {
-        var prop = typeDecl.Members.OfType<PropertyDeclarationSyntax>()
+        var props = typeDecl.Members.OfType<PropertyDeclarationSyntax>()
             .Where(p => p.Modifiers.Any(SyntaxKind.PartialKeyword) && p.Modifiers.Any(SyntaxKind.PublicKeyword));
 
         bool hasErrors = false;
-        properties = prop.ToDictionary(p => p.Identifier.Text, p =>
-            {
-                if (p.AccessorList?.Accessors.Any(acc => acc.Keyword.Text != "get") == true)
-                {
-                    spc.PropertyMustBeReadOnly(name, p.Identifier.Text, p.GetLocation());
-                    hasErrors = true;
-                }
+        properties = new PropertiesLookup();
 
-                var propSymbol = model.GetDeclaredSymbol(p)!;
-                if (propSymbol.ReturnsByRef)
-                {
-                    spc.PropertyNotReturnByRef(name, p.Identifier.Text, p.GetLocation());
-                    hasErrors = true;
-                }
-                var type = propSymbol.Type;
-                return (type: p.Type.ToString(), isStruct: type.TypeKind == TypeKind.Struct);
-            });
+        foreach (var prop in props)
+        {
+            if (prop.AccessorList?.Accessors.Any(acc => acc.Keyword.Text != "get") == true)
+            {
+                spc.PropertyMustBeReadOnly(name, prop.Identifier.Text, prop.GetLocation());
+                hasErrors = true;
+            }
+
+            var propSymbol = model.GetDeclaredSymbol(prop)!;
+            if (propSymbol.ReturnsByRef)
+            {
+                spc.PropertyNotReturnByRef(name, prop.Identifier.Text, prop.GetLocation());
+                hasErrors = true;
+            }
+
+            properties.Add(prop.Identifier.Text, type: prop.Type.ToString(), isStruct: propSymbol.Type.TypeKind == TypeKind.Struct);
+        }
 
         return !hasErrors;
     }

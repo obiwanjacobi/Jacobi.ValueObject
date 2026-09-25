@@ -76,7 +76,7 @@ internal static class Generator
         }
     }
 
-    public static Compilation Assert(string decl, string usage, ITestOutputHelper? output = null)
+    public static Compilation Assert(string decl, string usage, string additional, ITestOutputHelper? output = null)
     {
         var sourceCode = $$"""
             using System;
@@ -84,13 +84,15 @@ internal static class Generator
             using System.Collections.Generic;
             using Jacobi.ValueObject;
             using Xunit;
-            namespace Test;
-            {{decl}}
-            public static class Program {
-                public static void Main() {
-                    {{usage}}
+            namespace Test {
+                {{decl}}
+                public static class Program {
+                    public static void Main() {
+                        {{usage}}
+                    }
                 }
             }
+            {{additional}}
             """;
 
         var genSources = Compile(sourceCode, out var compilation, out var diagnostics);
@@ -111,15 +113,15 @@ internal static class Generator
 
     public static void AssertAndRun(string decl, string usage, ITestOutputHelper? output = null)
     {
-        var compilation = Assert(decl, usage, output);
+        var compilation = Assert(decl, usage, String.Empty, output);
         Run(compilation);
     }
 
-    public static void ExpectException<ExceptionT>(string decl, string usage, ITestOutputHelper? output = null)
+    public static void ExpectException<ExceptionT>(string decl, string usage, string additional = "", ITestOutputHelper? output = null)
     {
         try
         {
-            var compilation = Assert(decl, usage, output);
+            var compilation = Assert(decl, usage, additional, output);
             Run(compilation);
         }
         catch (TargetInvocationException tie)

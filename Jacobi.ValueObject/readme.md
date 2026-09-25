@@ -245,6 +245,25 @@ The `Jacobi.ValueObject.ValueObjectException` is throw in these circumstances.
 
 *) Note that as of version 1.4.0 the default constructor has an `ObsoleteAttribute` which makes calling it a compile error, but not in all cases (`Array`s, `default`).
 
+To customize exception types/messages, add a static `Jacobi.ValueObject.ExceptionFactory` class to your project.
+If present, generated code will call its factory methods instead of directly throwing `ValueObjectException`.
+
+```csharp
+namespace Jacobi.ValueObject;
+
+internal static class ExceptionFactory
+{
+    // called when the default constructor is being called.
+    public static Exception NewConstructionException(string name) => ...;
+    // called when a property value was not correctly initialized.
+    public static Exception NewInitializationException(string name, string property) => ...;
+    // called for single value objects when the specified value does not pass the `IsValid` check.
+    public static Exception NewValidationException(string name, object value) => ...;
+    // called for multi value objects when the specified values do not pass the `IsValid` check.
+    public static Exception NewValidationException(string name, params IEnumerable<KeyValuePair<string, object>> properties) => ...;
+}
+```
+
 ## Project File
 
 To see the generated source files for the value objects, add to your `.csproj` project file:

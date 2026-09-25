@@ -11,9 +11,12 @@ public sealed class Generator : IIncrementalGenerator
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var valObjInfos = FindDeclarationsAndSymbols(context);
+        var hasExceptionFactory = context.CompilationProvider.Select(static (compilation, _) => compilation.HasExceptionFactory());
+        var generationInput = valObjInfos.Combine(hasExceptionFactory);
 
-        context.RegisterSourceOutput(valObjInfos, (spc, valObjInfo) =>
+        context.RegisterSourceOutput(generationInput, (spc, source) =>
         {
+            var (valObjInfo, exceptionFactoryPresent) = source;
             if (valObjInfo is null) return;
             if (valObjInfo.Symbol.ContainingNamespace.IsGlobalNamespace)
             {
@@ -70,6 +73,10 @@ public sealed class Generator : IIncrementalGenerator
                 features |= CodeBuilderFeatures.NewtonsoftJson;
             if (HasOption(options, ValueObjectOptions.UnlockDefaultCtor))
                 features |= CodeBuilderFeatures.UnlockDefaultCtor;
+            if (exceptionFactoryPresent)
+                features |= CodeBuilderFeatures.ExceptionFactory;
+
+            _ = exceptionFactoryPresent;
 
             var builder = new CodeBuilder(interfaces, features)
                 .Namespace(ns)
@@ -207,6 +214,8 @@ public sealed class Generator : IIncrementalGenerator
             .Where(valObjInfo => valObjInfo is not null);
         return valObjInfos;
     }
+
+
 
     private CodeBuilderInterfaces DetermineInterfaces(ImmutableArray<INamedTypeSymbol> interfaces, string name, string datatype)
     {

@@ -19,7 +19,7 @@ public class ValueObjectMethods
             ValObj vo = default;    // should throw
             """;
 
-        Generator.ExpectException<ValueObjectException>(decl, usage, _output);
+        Generator.ExpectException<ValueObjectException>(decl, usage, String.Empty, _output);
     }
 
     [Fact]
@@ -50,7 +50,7 @@ public class ValueObjectMethods
             // should throw
             """;
 
-        Generator.ExpectException<ValueObjectException>(decl, usage, _output);
+        Generator.ExpectException<ValueObjectException>(decl, usage, String.Empty, _output);
     }
 
     [Fact]
@@ -123,7 +123,7 @@ public class ValueObjectMethods
             // should throw
             """;
 
-        Generator.ExpectException<ValueObjectException>(decl, usage, _output);
+        Generator.ExpectException<ValueObjectException>(decl, usage, String.Empty, _output);
     }
 
     [Fact]

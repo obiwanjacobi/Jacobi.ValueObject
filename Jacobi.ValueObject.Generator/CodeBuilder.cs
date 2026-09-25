@@ -3,8 +3,6 @@ using System.Text;
 
 namespace Jacobi.ValueObject.Generator;
 
-using IProperties = IDictionary<string, (string type, bool isStruct)>;
-
 internal sealed class CodeBuilder
 {
     private readonly StringBuilder _builder = new();
@@ -91,9 +89,10 @@ internal sealed class CodeBuilder
     {
         if ((_features & CodeBuilderFeatures.UnlockDefaultCtor) == 0)
         {
-            var txt = $"Do not call the default constructor for ValueObject '{name}'.";
-            Indent().AppendLine($"""[System.Obsolete("{txt} It will throw an exception.", error: true)]""");
-            Indent().AppendLine($"""public {name}() => throw new Jacobi.ValueObject.ValueObjectException("{txt}");""");
+            Indent().AppendLine($"""[System.Obsolete("Do not call the default constructor for ValueObject '{name}'. It will throw an exception. Use the 'UnlockDefaultCtor' option to enable this when absolutely needed.", error: true)]""");
+            Indent().Append($"""public {name}() => """)
+                .AppendThrowConstructionException(_features, name)
+                .AppendLine();
         }
         return this;
     }
@@ -102,13 +101,22 @@ internal sealed class CodeBuilder
     {
         Indent()
             .Append(isPublic ? "public" : "private")
-            .Append($" {name}({datatype} value) ")
-            .AppendLine(!hasIsValidMethod ? "=> _value = value;"
-                : $$"""{ if ({{name}}.IsValid(value)) _value = value; else throw new Jacobi.ValueObject.ValueObjectException($"Validation Failed. The value '{value}' is not valid for Value Object '{{name}}'."); }""");
+            .Append($" {name}({datatype} value) ");
+        if (hasIsValidMethod)
+        {
+            _builder.Append($$"""{ if ({{name}}.IsValid(value)) _value = value; else """)
+                .AppendThrowValidationException(_features, name)
+                .AppendLine(" }");
+        }
+        else
+        {
+            _builder.AppendLine("=> _value = value;");
+        }
+
         return this;
     }
 
-    public CodeBuilder Constructor(string name, IProperties properties, bool isPublic, bool hasIsValidMethod)
+    public CodeBuilder Constructor(string name, PropertiesLookup properties, bool isPublic, bool hasIsValidMethod)
     {
         Indent()
                     .Append(isPublic ? "public" : "private")
@@ -126,8 +134,11 @@ internal sealed class CodeBuilder
             Scope();
             Indent().AppendPropertiesAssignments(properties, toPrivates: true).AppendLine();
             EndScope();
-            Indent().Append("else ")
-                .AppendLine($$"""throw new Jacobi.ValueObject.ValueObjectException($"Validation Failed. The specified values are not valid for Value Object '{{name}}'.");""");
+            Indent().AppendLine("else");
+            Scope();
+            Indent().AppendThrowValidationException(_features, name, properties.Keys.Select(p => p.LowerFirstChar()))
+                .AppendLine();
+            EndScope();
         }
         else
         {
@@ -140,16 +151,21 @@ internal sealed class CodeBuilder
     public CodeBuilder ValueProperty(string name, string datatype)
     {
         Indent().AppendLine($"private readonly {datatype}? _value;");
-        Indent().AppendLine($"""public {datatype} Value => _value ?? throw new Jacobi.ValueObject.ValueObjectException("ValueObject '{name}' was not initialized with a valid value.");""");
+        Indent().Append($"""public {datatype} Value => _value ?? """)
+            .AppendThrowInitializationException(_features, name, "Value")
+            .AppendLine();
         return this;
     }
 
-    public CodeBuilder Properties(IProperties properties, string name)
+    public CodeBuilder Properties(PropertiesLookup properties, string name)
     {
         foreach (var prop in properties)
         {
-            Indent().AppendLine($"private readonly {prop.Value.type}? _{prop.Key.LowerFirstChar()};");
-            Indent().AppendLine($"""public partial {prop.Value.type} {prop.Key} => _{prop.Key.LowerFirstChar()} ?? throw new Jacobi.ValueObject.ValueObjectException("ValueObject '{name}' was not initialized with a valid value for properties '{prop.Key}'.");""");
+            var value = properties[prop];
+            Indent().AppendLine($"private readonly {value.type}? _{prop.LowerFirstChar()};");
+            Indent().Append($"""public partial {value.type} {prop} => _{prop.LowerFirstChar()} ?? """)
+                .AppendThrowInitializationException(_features, name, prop)
+                .AppendLine();
         }
         return this;
     }
@@ -161,7 +177,7 @@ internal sealed class CodeBuilder
         return this;
     }
 
-    public CodeBuilder OverrideEqualsAndGetHashCode(IProperties properties, string name)
+    public CodeBuilder OverrideEqualsAndGetHashCode(PropertiesLookup properties, string name)
     {
         Indent().AppendLine($"public override bool Equals(object? obj) => obj is {name} && Equals(({name})obj);");
         Indent().Append($"public override int GetHashCode() => System.HashCode.Combine(")
@@ -188,7 +204,7 @@ internal sealed class CodeBuilder
         return this;
     }
 
-    public CodeBuilder ExplicitFrom(string name, IProperties properties, bool isPartial)
+    public CodeBuilder ExplicitFrom(string name, PropertiesLookup properties, bool isPartial)
     {
         Indent().Append("public static ")
             .Append(isPartial ? "partial " : "")
@@ -208,7 +224,7 @@ internal sealed class CodeBuilder
         return this;
     }
 
-    public CodeBuilder TryCreate(IProperties properties, string name)
+    public CodeBuilder TryCreate(PropertiesLookup properties, string name)
     {
         Indent().Append("public static bool Try(")
             .AppendPropertiesAsParameters(properties)
@@ -221,7 +237,7 @@ internal sealed class CodeBuilder
         return this;
     }
 
-    public CodeBuilder Deconstruct(IProperties properties)
+    public CodeBuilder Deconstruct(PropertiesLookup properties)
     {
         Indent().Append("public void Deconstruct(")
             .AppendPropertiesAsOutParameters(properties)
@@ -260,7 +276,7 @@ internal sealed class CodeBuilder
         return this;
     }
 
-    public CodeBuilder SystemTextJsonConverter(string name, IProperties properties)
+    public CodeBuilder SystemTextJsonConverter(string name, PropertiesLookup properties)
     {
         Indent().AppendLine($"public sealed class {name}JsonConverter : System.Text.Json.Serialization.JsonConverter<{name}>");
         Scope();
@@ -270,8 +286,8 @@ internal sealed class CodeBuilder
         Indent().AppendLine("writer.WriteStartObject();");
         foreach (var prop in properties)
         {
-            Indent().AppendLine($"writer.WritePropertyName(options.PropertyNamingPolicy?.ConvertName(\"{prop.Key}\") ?? \"{prop.Key}\");");
-            Indent().AppendLine($"System.Text.Json.JsonSerializer.Serialize(writer, value.{prop.Key}, options);");
+            Indent().AppendLine($"writer.WritePropertyName(options.PropertyNamingPolicy?.ConvertName(\"{prop}\") ?? \"{prop}\");");
+            Indent().AppendLine($"System.Text.Json.JsonSerializer.Serialize(writer, value.{prop}, options);");
         }
         Indent().AppendLine("writer.WriteEndObject();");
         EndScope();
@@ -286,14 +302,14 @@ internal sealed class CodeBuilder
         Indent().AppendLine("var root = document.RootElement;");
         foreach (var prop in properties)
         {
-            var localName = prop.Key.LowerFirstChar();
-            Indent().AppendLine($"if (!TryGetProperty(root, options, \"{prop.Key}\", out var {localName}Element))");
+            var localName = prop.LowerFirstChar();
+            Indent().AppendLine($"if (!TryGetProperty(root, options, \"{prop}\", out var {localName}Element))");
             Scope();
-            Indent().AppendLine($"throw new System.Text.Json.JsonException(\"Missing JSON property '{prop.Key}' for '{name}'.\");");
+            Indent().AppendLine($"throw new System.Text.Json.JsonException(\"Missing JSON property '{prop}' for '{name}'.\");");
             EndScope();
-            Indent().AppendLine($"var {localName} = System.Text.Json.JsonSerializer.Deserialize<{prop.Value.type}>({localName}Element.GetRawText(), options);");
-            if (!prop.Value.isStruct)
-                Indent().AppendLine($"if ({localName} is null) throw new System.Text.Json.JsonException(\"The JSON property '{prop.Key}' could not be converted to '{prop.Value.type}'.\");");
+            Indent().AppendLine($"var {localName} = System.Text.Json.JsonSerializer.Deserialize<{properties[prop].type}>({localName}Element.GetRawText(), options);");
+            if (!properties[prop].isStruct)
+                Indent().AppendLine($"if ({localName} is null) throw new System.Text.Json.JsonException(\"The JSON property '{prop}' could not be converted to '{properties[prop].type}'.\");");
         }
         Indent().Append("return new(")
             .AppendPropertiesAsArguments(properties, asMembers: false)
@@ -352,7 +368,7 @@ internal sealed class CodeBuilder
         return this;
     }
 
-    public CodeBuilder NewtonsoftJsonConverter(string name, IProperties properties)
+    public CodeBuilder NewtonsoftJsonConverter(string name, PropertiesLookup properties)
     {
         Indent().AppendLine($"public sealed class {name}NewtonsoftJsonConverter : Newtonsoft.Json.JsonConverter");
         Scope();
@@ -367,8 +383,8 @@ internal sealed class CodeBuilder
         Indent().AppendLine("writer.WriteStartObject();");
         foreach (var prop in properties)
         {
-            Indent().AppendLine($"writer.WritePropertyName(ResolvePropertyName(serializer, \"{prop.Key}\"));");
-            Indent().AppendLine($"serializer.Serialize(writer, typedValue.{prop.Key});");
+            Indent().AppendLine($"writer.WritePropertyName(ResolvePropertyName(serializer, \"{prop}\"));");
+            Indent().AppendLine($"serializer.Serialize(writer, typedValue.{prop});");
         }
         Indent().AppendLine("writer.WriteEndObject();");
         EndScope();
@@ -378,14 +394,14 @@ internal sealed class CodeBuilder
         Indent().AppendLine("var jsonObject = Newtonsoft.Json.Linq.JObject.Load(reader);");
         foreach (var prop in properties)
         {
-            var localName = prop.Key.LowerFirstChar();
-            Indent().AppendLine($"if (!TryGetProperty(jsonObject, serializer, \"{prop.Key}\", out var {localName}Token))");
+            var localName = prop.LowerFirstChar();
+            Indent().AppendLine($"if (!TryGetProperty(jsonObject, serializer, \"{prop}\", out var {localName}Token))");
             Scope();
-            Indent().AppendLine($"throw new Newtonsoft.Json.JsonSerializationException(\"Missing JSON property '{prop.Key}' for '{name}'.\");");
+            Indent().AppendLine($"throw new Newtonsoft.Json.JsonSerializationException(\"Missing JSON property '{prop}' for '{name}'.\");");
             EndScope();
-            Indent().AppendLine($"var {localName} = ({localName}Token ?? throw new Newtonsoft.Json.JsonSerializationException(\"The JSON property '{prop.Key}' could not be converted to '{prop.Value.type}'.\")).ToObject<{prop.Value.type}>(serializer);");
-            if (!prop.Value.isStruct)
-                Indent().AppendLine($"if ({localName} is null) throw new Newtonsoft.Json.JsonSerializationException(\"The JSON property '{prop.Key}' could not be converted to '{prop.Value.type}'.\");");
+            Indent().AppendLine($"var {localName} = ({localName}Token ?? throw new Newtonsoft.Json.JsonSerializationException(\"The JSON property '{prop}' could not be converted to '{properties[prop].type}'.\")).ToObject<{properties[prop].type}>(serializer);");
+            if (!properties[prop].isStruct)
+                Indent().AppendLine($"if ({localName} is null) throw new Newtonsoft.Json.JsonSerializationException(\"The JSON property '{prop}' could not be converted to '{properties[prop].type}'.\");");
         }
         Indent().Append($"return new {name}(")
             .AppendPropertiesAsArguments(properties, asMembers: false)
@@ -416,10 +432,10 @@ internal sealed class CodeBuilder
         return this;
     }
 
-    public CodeBuilder ObjectToString(IProperties properties, string name)
+    public CodeBuilder ObjectToString(PropertiesLookup properties, string name)
     {
         Indent().Append($"public override string ToString() => $\"{name} {{{{")
-            .Append(String.Join(", ", properties.Select(p => $"{p.Key} = {{{p.Key}}}")))
+            .Append(String.Join(", ", properties.Select(p => $"{p} = {{{p}}}")))
             .AppendLine("}}\";");
         return this;
     }
@@ -481,12 +497,12 @@ internal sealed class CodeBuilder
         return this;
     }
 
-    public CodeBuilder AddInterfaceImplementations(IProperties properties, string name)
+    public CodeBuilder AddInterfaceImplementations(PropertiesLookup properties, string name)
     {
         if ((_interfaces & CodeBuilderInterfaces.IEquatableStruct) != 0)
         {
             Indent().Append($"public bool Equals({name} value) => ")
-                .Append(String.Join(" && ", properties.Select(p => $"{p.Key}.Equals(value.{p.Key})")))
+                .Append(String.Join(" && ", properties.Select(p => $"{p}.Equals(value.{p})")))
                 .AppendLine(";");
 
             Indent().AppendLine($"public static bool operator ==({name} valueObject, {name} value) => valueObject.Equals(value);");
@@ -562,35 +578,82 @@ internal enum CodeBuilderFeatures
     SystemTextJson = 0x01,
     NewtonsoftJson = 0x02,
     UnlockDefaultCtor = 0x04,
+    ExceptionFactory = 0x08,
 }
 
 internal static class StringBuilderExtensions
 {
-    public static StringBuilder AppendPropertiesAsParameters(this StringBuilder builder, IProperties properties)
-        => builder.Append(String.Join(", ", properties.Select(p => $"{p.Value.type} {p.Key.LowerFirstChar()}")));
-    public static StringBuilder AppendPropertiesAsOutParameters(this StringBuilder builder, IProperties properties)
-        => builder.Append(String.Join(", ", properties.Select(p => $"out {p.Value.type} {p.Key.LowerFirstChar()}")));
+    public static StringBuilder AppendPropertiesAsParameters(this StringBuilder builder, PropertiesLookup properties)
+        => builder.Append(String.Join(", ", properties.Select(p => $"{properties[p].type} {p.LowerFirstChar()}")));
+    public static StringBuilder AppendPropertiesAsOutParameters(this StringBuilder builder, PropertiesLookup properties)
+        => builder.Append(String.Join(", ", properties.Select(p => $"out {properties[p].type} {p.LowerFirstChar()}")));
 
-    public static StringBuilder AppendPropertiesAsArguments(this StringBuilder builder, IProperties properties, bool asMembers)
+    public static StringBuilder AppendPropertiesAsArguments(this StringBuilder builder, PropertiesLookup properties, bool asMembers)
         => asMembers
-            ? builder.Append(String.Join(", ", properties.Select(p => p.Key)))
-            : builder.Append(String.Join(", ", properties.Select(p => p.Key.LowerFirstChar())))
+            ? builder.Append(String.Join(", ", properties))
+            : builder.Append(String.Join(", ", properties.Select(p => p.LowerFirstChar())))
         ;
 
-    public static StringBuilder AppendPropertiesAssignments(this StringBuilder builder, IProperties properties, bool toPrivates)
+    public static StringBuilder AppendPropertiesAssignments(this StringBuilder builder, PropertiesLookup properties, bool toPrivates)
         => toPrivates
-            ? builder.Append(String.Join(" ", properties.Select(p => $"_{p.Key.LowerFirstChar()} = {p.Key.LowerFirstChar()};")))
-            : builder.Append(String.Join(" ", properties.Select(p => $"{p.Key.LowerFirstChar()} = {p.Key};")))
+            ? builder.Append(String.Join(" ", properties.Select(p => $"_{p.LowerFirstChar()} = {p.LowerFirstChar()};")))
+            : builder.Append(String.Join(" ", properties.Select(p => $"{p.LowerFirstChar()} = {p};")))
         ;
-}
 
-/*
-private partial class {name}NewtonsoftJsonConverter : Newtonsoft.Json.JsonConverter
-{
-    public override bool CanRead { get; }
-    public override bool CanWrite { get; }
-    public override bool CanConvert(System.Type type);
-    public override void WriteJson(Newtonsoft.Json.JsonWriter writer, object? value, Newtonsoft.Json.JsonSerializer serializer);
-    public override object ReadJson(Newtonsoft.Json.JsonReader reader, System.Type objectType, object? existingValue, Newtonsoft.Json.JsonSerializer serializer);
+    public static StringBuilder AppendThrowConstructionException(this StringBuilder builder, CodeBuilderFeatures features, string name)
+    {
+        if ((features & CodeBuilderFeatures.ExceptionFactory) > 0)
+        {
+            builder.Append($"""throw Jacobi.ValueObject.ExceptionFactory.NewConstructionException("{name}");""");
+        }
+        else
+        {
+            builder.Append($"""throw new Jacobi.ValueObject.ValueObjectException("Do not call the default constructor for ValueObject '{name}'. Use the 'UnlockDefaultCtor' option to enable this when absolutely needed.");""");
+        }
+
+        return builder;
+    }
+
+    public static StringBuilder AppendThrowInitializationException(this StringBuilder builder, CodeBuilderFeatures features, string name, string property)
+    {
+        if ((features & CodeBuilderFeatures.ExceptionFactory) > 0)
+        {
+            builder.Append($"""throw Jacobi.ValueObject.ExceptionFactory.NewInitializationException("{name}", "{property}");""");
+        }
+        else
+        {
+            builder.Append($"""throw new Jacobi.ValueObject.ValueObjectException("ValueObject '{name}' was not initialized with a valid value for property '{property}'.");""");
+        }
+
+        return builder;
+    }
+
+    public static StringBuilder AppendThrowValidationException(this StringBuilder builder, CodeBuilderFeatures features, string name, IEnumerable<string>? properties = null)
+    {
+        if ((features & CodeBuilderFeatures.ExceptionFactory) > 0)
+        {
+            if (properties is null)
+            {
+                builder.Append($$"""throw Jacobi.ValueObject.ExceptionFactory.NewValidationException("{{name}}", value);""");
+            }
+            else
+            {
+                var propParams = properties.Select(p => $$"""new System.Collections.Generic.KeyValuePair<string, object>("{{p}}", """ + p + """)""");
+                builder.Append($$"""throw Jacobi.ValueObject.ExceptionFactory.NewValidationException("{{name}}", {{String.Join(", ", propParams)}});""");
+            }
+        }
+        else
+        {
+            if (properties is null)
+            {
+                builder.Append($$"""throw new Jacobi.ValueObject.ValueObjectException($"Validation Failed. The value '{value}' is not valid for Value Object '{{name}}'.");""");
+            }
+            else
+            {
+                builder.Append($$"""throw new Jacobi.ValueObject.ValueObjectException($"Validation Failed. The specified values ({{String.Join(", ", properties.Select(p => p + "={" + p + "}"))}}) are not valid for Value Object '{{name}}'.");""");
+            }
+        }
+
+        return builder;
+    }
 }
- */
